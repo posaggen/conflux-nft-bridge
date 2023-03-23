@@ -4,6 +4,7 @@ pragma solidity ^0.8.0;
 import "./Initializable.sol";
 import "./PeggedTokenDeployer.sol";
 import "./PeggedERC721.sol";
+import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
 import "@openzeppelin/contracts/token/ERC721/extensions/IERC721Metadata.sol";
 import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
@@ -114,6 +115,14 @@ contract EvmSide is Initializable, PeggedTokenDeployer, IERC721Receiver {
      */
     function preDeployCfx(address evmToken) public view onlyCfxSide onlyPeggable(evmToken) returns (string memory name, string memory symbol) {
         return (IERC721Metadata(evmToken).name(), IERC721Metadata(evmToken).symbol());
+    }
+
+    /**
+     * @dev Transfer token to specified user by cfx side, when user withdraw NFT from core space (pegged)
+     * back to eSpace (origin).
+     */
+    function transfer(address evmToken, address to, uint256 tokenId) public onlyCfxSide {
+        IERC721(evmToken).safeTransferFrom(address(this), to, tokenId);
     }
 
 }

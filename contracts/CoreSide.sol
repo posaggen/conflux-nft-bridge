@@ -4,6 +4,7 @@ pragma solidity ^0.8.0;
 import "./Initializable.sol";
 import "./PeggedTokenDeployer.sol";
 import "./EvmSide.sol";
+import "./PeggedERC721.sol";
 import "@openzeppelin/contracts/access/AccessControlEnumerable.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
@@ -23,6 +24,7 @@ contract CoreSide is Initializable, PeggedTokenDeployer, AccessControlEnumerable
 
     // evm token => cfx token (pegged on core space)
     mapping(bytes20 => address) public evm2coreTokens;
+    mapping(address => bytes20) public peggedCore2EvmTokens;
 
     // emitted when cross NFT from core space (origin) to eSpace (pegged)
     event CrossToEvm(
@@ -40,6 +42,16 @@ contract CoreSide is Initializable, PeggedTokenDeployer, AccessControlEnumerable
         bytes20 evmToken,
         address indexed cfxOperator,
         address indexed cfxRecipient,
+        uint256 tokenId
+    );
+
+    // emitted when withdraw NFT from core space (pegged) to eSpace (origin)
+    event WithdrawToEvm(
+        address indexed cfxToken,
+        bytes20 evmToken,
+        address cfxOperator,
+        address indexed cfxFrom,
+        bytes20 indexed evmTo,
         uint256 tokenId
     );
 
@@ -86,7 +98,7 @@ contract CoreSide is Initializable, PeggedTokenDeployer, AccessControlEnumerable
     }
 
     /**
-     * @dev Implements the IERC721Receiver interface for users to cross NFT from core to eSpace via IERC721.safeTransferFrom.
+     * @dev Implements the IERC721Receiver interface for users to cross NFT via IERC721.safeTransferFrom.
      */
     function onERC721Received(
         address operator,
@@ -94,16 +106,30 @@ contract CoreSide is Initializable, PeggedTokenDeployer, AccessControlEnumerable
         uint256 tokenId,
         bytes calldata data
     ) public override returns (bytes4) {
-        address cfxToken = msg.sender;
-        bytes20 evmToken = core2evmTokens[cfxToken];
-        require(evmToken != bytes20(0), "cfx token unsupported");
-
         // parse evm account from data
         require(data.length == 20, "data should be evm address");
         address evmAccount = abi.decode(data, (address));
         require(evmAccount != address(0), "evm address not provided");
 
-        // mint with token uri for non-placeholder case
+        if (core2evmTokens[msg.sender] != bytes20(0)) {
+            // cross origin token from core space to eSpace as pegged
+            _crossToEvm(operator, from, tokenId, evmAccount);
+        } else {
+            // withdraw pegged token on core space to eSpace
+            require(peggedCore2EvmTokens[msg.sender] != bytes20(0), "invalid token received");
+            _withdrawToEvm(operator, from, tokenId, evmAccount);
+        }
+
+        return IERC721Receiver.onERC721Received.selector;
+    }
+
+    /**
+     * @dev Cross origin token from core space to eSpace as pegged.
+     */
+    function _crossToEvm(address operator, address from, uint256 tokenId, address evmAccount) private {
+        address cfxToken = msg.sender;
+        bytes20 evmToken = core2evmTokens[cfxToken];
+
         string memory uri = IERC721Metadata(cfxToken).tokenURI(tokenId);
 
         // mint on eSpace via cross space internal contract
@@ -112,8 +138,6 @@ contract CoreSide is Initializable, PeggedTokenDeployer, AccessControlEnumerable
         );
 
         emit CrossToEvm(cfxToken, evmToken, operator, from, bytes20(evmAccount), tokenId);
-
-        return IERC721Receiver.onERC721Received.selector;
     }
 
     /**
@@ -156,6 +180,23 @@ contract CoreSide is Initializable, PeggedTokenDeployer, AccessControlEnumerable
         address cfxToken = _deployPeggedToken(name, symbol);
 
         evm2coreTokens[evmToken] = cfxToken;
+        peggedCore2EvmTokens[cfxToken] = evmToken;
+    }
+
+    /**
+     * @dev Withdraw pegged token on core space back to eSpace.
+     */
+    function _withdrawToEvm(address operator, address from, uint256 tokenId, address evmAccount) private {
+        address cfxToken = msg.sender;
+        bytes20 evmToken = peggedCore2EvmTokens[cfxToken];
+
+        PeggedERC721(cfxToken).burn(tokenId);
+
+        InternalContracts.CROSS_SPACE_CALL.callEVM(evmSide,
+            abi.encodeWithSelector(EvmSide.transfer.selector, address(evmToken), evmAccount, tokenId)
+        );
+        
+        emit WithdrawToEvm(cfxToken, evmToken, operator, from, bytes20(evmAccount), tokenId);
     }
 
 }
