@@ -2,33 +2,27 @@
 pragma solidity ^0.8.0;
 
 import "./Initializable.sol";
+import "./PeggedTokenDeployer.sol";
 import "./PeggedERC721.sol";
-import "@openzeppelin/contracts/access/Ownable.sol";
-import "@openzeppelin/contracts/proxy/beacon/BeaconProxy.sol";
-import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
+import "@openzeppelin/contracts/token/ERC721/extensions/IERC721Metadata.sol";
+import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 
-contract EvmSide is Initializable, IERC721Receiver, Ownable {
-    using EnumerableSet for EnumerableSet.UintSet;
+contract EvmSide is Initializable, PeggedTokenDeployer, IERC721Receiver {
     using EnumerableSet for EnumerableSet.AddressSet;
+    using EnumerableSet for EnumerableSet.UintSet;
 
     // privileged cfx side to mint/burn tokens on eSpace
     address public cfxSide;
-
-    // NFT beacon (ERC721)
-    address public beacon;
-
-    // all evm tokens for enumeration
-    EnumerableSet.AddressSet private _evmTokens;
 
     // locked NFTs that allow core space to withdraw
     // evm token => cfx account => token ids
     mapping(address => mapping(address => EnumerableSet.UintSet)) private _lockedTokens;
 
-    // emitted when user lock tokens for core space users to withdraw in another transaction
-    event LockedMappedToken(
-        address evmToken,
-        address indexed evmOperator,
+    // emitted when user lock pegged tokens for core space users to withdraw in another transaction
+    event LockedPeggedToken(
+        address indexed evmToken,
+        address evmOperator,
         address indexed evmFrom,
         address indexed cfxTo,
         uint256 tokenId
@@ -36,14 +30,11 @@ contract EvmSide is Initializable, IERC721Receiver, Ownable {
 
     function initialize(address beacon_) public {
         Initializable._initialize();
-
-        beacon = beacon_;
-
-        _transferOwnership(msg.sender);
+        PeggedTokenDeployer._initialize(beacon_);
     }
 
     /**
-     * @dev Connect to cfx side, which is a mapped address.
+     * @dev Connect to cfx side, which is a mapped address of base32 address.
      */
     function setCfxSide() public {
         require(cfxSide == address(0), "cfx side set already");
@@ -55,14 +46,18 @@ contract EvmSide is Initializable, IERC721Receiver, Ownable {
         _;
     }
 
+    ////////////////////////////////////////////////////////////////////////////////////////////////////
+    //
+    // Origin tokens on core space, and pegged tokens on eSpace.
+    //
+    ////////////////////////////////////////////////////////////////////////////////////////////////////
+
     /**
      * @dev Create a NFT contract with beacon proxy on eSpace. This is called by core space
      * via cross space internal contract.
      */
-    function deploy(string memory name, string memory symbol) public onlyCfxSide returns (address evmToken) {
-        evmToken = address(new BeaconProxy(beacon, ""));
-        PeggedERC721(evmToken).initialize(name, symbol, owner());
-        require(_evmTokens.add(evmToken), "duplicated evm token created");
+    function deploy(string memory name, string memory symbol) public onlyCfxSide returns (address) {
+        return _deployPeggedToken(name, symbol);
     }
 
     /**
@@ -93,7 +88,7 @@ contract EvmSide is Initializable, IERC721Receiver, Ownable {
         bytes calldata data
     ) public override returns (bytes4) {
         address evmToken = msg.sender;
-        require(_evmTokens.contains(evmToken), "evm token unsupported");
+        require(_peggedTokens.contains(evmToken), "evm token unsupported");
 
         // parse cfx account from data
         require(data.length == 20, "data should be cfx address");
@@ -103,9 +98,22 @@ contract EvmSide is Initializable, IERC721Receiver, Ownable {
         // lock token to withdraw from cfx side
         require(_lockedTokens[evmToken][cfxAccount].add(tokenId), "token already locked");
 
-        emit LockedMappedToken(evmToken, operator, from, cfxAccount, tokenId);
+        emit LockedPeggedToken(evmToken, operator, from, cfxAccount, tokenId);
 
         return IERC721Receiver.onERC721Received.selector;
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////////
+    //
+    // Origin tokens on eSpace, and pegged tokens on core space.
+    //
+    ////////////////////////////////////////////////////////////////////////////////////////////////////
+
+    /**
+     * @dev Check if the specified `evmToken` is valid to create pegged NFT contract on core space.
+     */
+    function preDeployCfx(address evmToken) public view onlyCfxSide onlyPeggable(evmToken) returns (string memory name, string memory symbol) {
+        return (IERC721Metadata(evmToken).name(), IERC721Metadata(evmToken).symbol());
     }
 
 }

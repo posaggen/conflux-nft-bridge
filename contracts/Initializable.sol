@@ -5,7 +5,7 @@ pragma solidity ^0.8.0;
  * @dev This is a base contract to aid in writing upgradeable contracts, or 
  * any kind of contract that will be deployed behind a proxy.
  */
-contract Initializable {
+abstract contract Initializable {
 
     bool public initialized;
 
