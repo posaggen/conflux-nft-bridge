@@ -8,10 +8,12 @@ import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
 import "@openzeppelin/contracts/token/ERC721/extensions/IERC721Metadata.sol";
 import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
+import "@openzeppelin/contracts/utils/math/Math.sol";
 
 contract EvmSide is Initializable, PeggedTokenDeployer, IERC721Receiver {
     using EnumerableSet for EnumerableSet.AddressSet;
     using EnumerableSet for EnumerableSet.UintSet;
+    using Math for uint256;
 
     // privileged cfx side to mint/burn tokens on eSpace
     address public cfxSide;
@@ -45,6 +47,27 @@ contract EvmSide is Initializable, PeggedTokenDeployer, IERC721Receiver {
     modifier onlyCfxSide() {
         require(msg.sender == cfxSide, "only cfx side permitted");
         _;
+    }
+
+    function lockedTokens(
+        address evmToken,
+        address cfxAccount,
+        uint256 offset,
+        uint256 limit
+    ) public view returns (uint256 total, uint256[] memory tokenIds) {
+        EnumerableSet.UintSet storage all = _lockedTokens[evmToken][cfxAccount];
+
+        total = all.length();
+        if (offset >= total) {
+            return (total, new uint256[](0));
+        }
+
+        uint256 endExclusive = total.min(offset + limit);
+        tokenIds = new uint256[](endExclusive - offset);
+
+        for (uint256 i = offset; i < endExclusive; i++) {
+            tokenIds[i - offset] = all.at(i);
+        }
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////////

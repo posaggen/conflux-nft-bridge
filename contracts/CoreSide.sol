@@ -21,11 +21,15 @@ contract CoreSide is Initializable, PeggedTokenDeployer, AccessControlEnumerable
 
     // cfx token => evm token (pegged on eSpace)
     mapping(address => bytes20) public core2evmTokens;
+    // all cfx tokens that pegged on eSpace
+    address[] public allCfxTokens;
 
     // evm token => cfx token (pegged on core space)
     mapping(bytes20 => address) public evm2coreTokens;
     // cfx token => evm token (pegged on core space)
     mapping(address => bytes20) public peggedCore2EvmTokens;
+    // all pegged cfx tokens on core space
+    address[] public allPeggedCfxTokens;
 
     // emitted when cross NFT from core space (origin) to eSpace (pegged)
     event CrossToEvm(
@@ -105,6 +109,7 @@ contract CoreSide is Initializable, PeggedTokenDeployer, AccessControlEnumerable
 
         address evmToken = abi.decode(result, (address));
         core2evmTokens[cfxToken] = bytes20(evmToken);
+        allCfxTokens.push(cfxToken);
     }
 
     /**
@@ -191,6 +196,7 @@ contract CoreSide is Initializable, PeggedTokenDeployer, AccessControlEnumerable
 
         evm2coreTokens[evmToken] = cfxToken;
         peggedCore2EvmTokens[cfxToken] = evmToken;
+        allPeggedCfxTokens.push(cfxToken);
     }
 
     /**
