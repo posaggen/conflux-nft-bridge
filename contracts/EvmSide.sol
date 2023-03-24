@@ -16,12 +16,12 @@ contract EvmSide is Initializable, PeggedTokenDeployer, IERC721Receiver {
     // privileged cfx side to mint/burn tokens on eSpace
     address public cfxSide;
 
-    // locked NFTs that allow core space to withdraw
+    // locked NFTs for cfx account on core space
     // evm token => cfx account => token ids
     mapping(address => mapping(address => EnumerableSet.UintSet)) private _lockedTokens;
 
-    // emitted when user lock pegged tokens for core space users to withdraw in another transaction
-    event LockedPeggedToken(
+    // emitted when user lock tokens for core space users to operate in advance
+    event TokenLocked(
         address indexed evmToken,
         address evmOperator,
         address indexed evmFrom,
@@ -58,7 +58,7 @@ contract EvmSide is Initializable, PeggedTokenDeployer, IERC721Receiver {
      * via cross space internal contract.
      */
     function deploy(string memory name, string memory symbol) public onlyCfxSide returns (address) {
-        return _deployPeggedToken(name, symbol);
+        return _deployPeggedToken(name, symbol, bytes20(0));
     }
 
     /**
@@ -88,18 +88,16 @@ contract EvmSide is Initializable, PeggedTokenDeployer, IERC721Receiver {
         uint256 tokenId,
         bytes calldata data
     ) public override returns (bytes4) {
-        address evmToken = msg.sender;
-        require(_peggedTokens.contains(evmToken), "evm token unsupported");
-
         // parse cfx account from data
         require(data.length == 20, "data should be cfx address");
         address cfxAccount = abi.decode(data, (address));
         require(cfxAccount != address(0), "cfx address not provided");
 
         // lock token to withdraw from cfx side
+        address evmToken = msg.sender;
         require(_lockedTokens[evmToken][cfxAccount].add(tokenId), "token already locked");
 
-        emit LockedPeggedToken(evmToken, operator, from, cfxAccount, tokenId);
+        emit TokenLocked(evmToken, operator, from, cfxAccount, tokenId);
 
         return IERC721Receiver.onERC721Received.selector;
     }
@@ -115,6 +113,13 @@ contract EvmSide is Initializable, PeggedTokenDeployer, IERC721Receiver {
      */
     function preDeployCfx(address evmToken) public view onlyCfxSide onlyPeggable(evmToken) returns (string memory name, string memory symbol) {
         return (IERC721Metadata(evmToken).name(), IERC721Metadata(evmToken).symbol());
+    }
+
+    /**
+     * @dev Unlock specified token by cfx side, when user cross NFT from eSpace to core space (pegged). 
+     */
+    function unlock(address evmToken, address cfxAccount, uint256 tokenId) public onlyCfxSide {
+        require(_lockedTokens[evmToken][cfxAccount].remove(tokenId), "token not locked");
     }
 
     /**

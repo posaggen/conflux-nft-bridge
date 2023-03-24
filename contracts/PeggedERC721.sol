@@ -6,7 +6,9 @@ import "@openzeppelin/contracts/token/ERC721/extensions/ERC721URIStorage.sol";
 import "@openzeppelin/contracts/token/ERC721/extensions/ERC721Pausable.sol";
 import "@openzeppelin/contracts/token/ERC721/extensions/ERC721Enumerable.sol";
 import "@openzeppelin/contracts/token/ERC721/extensions/ERC721Burnable.sol";
+import "@openzeppelin/contracts/token/ERC721/extensions/IERC721Metadata.sol";
 import "@openzeppelin/contracts/access/AccessControlEnumerable.sol";
+import "@confluxfans/contracts/InternalContracts/InternalContractsLib.sol";
 
 contract PeggedERC721 is
     ERC721Enumerable,
@@ -23,6 +25,8 @@ contract PeggedERC721 is
     string private _name_;
     string private _symbol_;
 
+    bytes20 public evmSide;
+
     constructor() ERC721("", "") {
         // no baseURL provided
     }
@@ -31,12 +35,15 @@ contract PeggedERC721 is
     function initialize(
         string memory name_,
         string memory symbol_,
+        bytes20 evmSide_,
         address admin
     ) public {
         Initializable._initialize();
 
         _name_ = name_;
         _symbol_ = symbol_;
+
+        evmSide = evmSide_;
 
         _grantRole(DEFAULT_ADMIN_ROLE, admin);
         _grantRole(PAUSER_ROLE, admin);
@@ -94,7 +101,16 @@ contract PeggedERC721 is
     }
 
     function tokenURI(uint256 tokenId) public view virtual override(ERC721, ERC721URIStorage) returns (string memory) {
-        return ERC721URIStorage.tokenURI(tokenId);
+        if (evmSide == bytes20(0)) {
+            return ERC721URIStorage.tokenURI(tokenId);
+        }
+
+        // read token URI from eSpace for pegged token on core space
+        bytes memory result = InternalContracts.CROSS_SPACE_CALL.staticCallEVM(evmSide,
+            abi.encodeWithSelector(IERC721Metadata.tokenURI.selector, tokenId)
+        );
+
+        return abi.decode(result, (string));
     }
 
     function grantRole(bytes32 role, address account) public override onlyRole(getRoleAdmin(role)) {

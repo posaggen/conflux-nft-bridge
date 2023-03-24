@@ -34,13 +34,13 @@ abstract contract PeggedTokenDeployer is Ownable {
         _;
     }
 
-    function _deployPeggedToken(string memory name, string memory symbol) internal returns (address) {
+    function _deployPeggedToken(string memory name, string memory symbol, bytes20 evmSide) internal returns (address) {
         require(beacon != address(0), "beacon uninitialized");
 
         address token = address(new BeaconProxy(beacon, ""));
         require(_peggedTokens.add(token), "duplicated pegged token created");
 
-        PeggedERC721(token).initialize(name, symbol, owner());
+        PeggedERC721(token).initialize(name, symbol, evmSide, owner());
 
         return token;
     }

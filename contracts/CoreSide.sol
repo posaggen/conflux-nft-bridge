@@ -40,7 +40,16 @@ contract CoreSide is Initializable, PeggedTokenDeployer, AccessControlEnumerable
     event WithdrawFromEvm(
         address indexed cfxToken,
         bytes20 evmToken,
-        address indexed cfxOperator,
+        address indexed cfxAccount,
+        address indexed cfxRecipient,
+        uint256 tokenId
+    );
+
+    // emitted when cross NFT from eSpace (origin) to core space (pegged)
+    event CrossFromEvm(
+        address indexed cfxToken,
+        bytes20 evmToken,
+        address indexed cfxAccount,
         address indexed cfxRecipient,
         uint256 tokenId
     );
@@ -177,10 +186,27 @@ contract CoreSide is Initializable, PeggedTokenDeployer, AccessControlEnumerable
             (name, symbol) = abi.decode(result, (string, string));
         }
 
-        address cfxToken = _deployPeggedToken(name, symbol);
+        address cfxToken = _deployPeggedToken(name, symbol, evmToken);
 
         evm2coreTokens[evmToken] = cfxToken;
         peggedCore2EvmTokens[cfxToken] = evmToken;
+    }
+
+    /**
+     * @dev Cross locked NFT from eSpace to core space as pegged.
+     */
+    function crossFromEvm(address cfxToken, uint256 tokenId, address recipient) public {
+        bytes20 evmToken = peggedCore2EvmTokens[cfxToken];
+        require(evmToken != bytes20(0), "cfx token unsupported");
+
+        InternalContracts.CROSS_SPACE_CALL.callEVM(evmSide,
+            abi.encodeWithSelector(EvmSide.unlock.selector, address(evmToken), msg.sender, tokenId)
+        );
+
+        // pegged NFT on core space do not require uri, instead, read from eSpace directly.
+        PeggedERC721(cfxToken).mint(recipient, tokenId, "");
+
+        emit CrossFromEvm(cfxToken, evmToken, msg.sender, recipient, tokenId);
     }
 
     /**
