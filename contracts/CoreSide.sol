@@ -24,6 +24,7 @@ contract CoreSide is Initializable, PeggedTokenDeployer, AccessControlEnumerable
 
     // evm token => cfx token (pegged on core space)
     mapping(bytes20 => address) public evm2coreTokens;
+    // cfx token => evm token (pegged on core space)
     mapping(address => bytes20) public peggedCore2EvmTokens;
 
     // emitted when cross NFT from core space (origin) to eSpace (pegged)

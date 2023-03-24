@@ -10,6 +10,9 @@ import "@openzeppelin/contracts/token/ERC721/extensions/IERC721Metadata.sol";
 import "@openzeppelin/contracts/access/AccessControlEnumerable.sol";
 import "@confluxfans/contracts/InternalContracts/InternalContractsLib.sol";
 
+/**
+ * @dev Pegged NFT contracts that deployed on core space or eSpace via beacon proxy.
+ */
 contract PeggedERC721 is
     ERC721Enumerable,
     ERC721Burnable,
@@ -25,7 +28,10 @@ contract PeggedERC721 is
     string private _name_;
     string private _symbol_;
 
+    // used on core space to read token URI from eSpace
     bytes20 public evmSide;
+
+    address private _bridge;
 
     constructor() ERC721("", "") {
         // no baseURL provided
@@ -44,6 +50,8 @@ contract PeggedERC721 is
         _symbol_ = symbol_;
 
         evmSide = evmSide_;
+
+        _bridge = msg.sender;
 
         _grantRole(DEFAULT_ADMIN_ROLE, admin);
         _grantRole(PAUSER_ROLE, admin);
@@ -114,10 +122,21 @@ contract PeggedERC721 is
     }
 
     function grantRole(bytes32 role, address account) public override onlyRole(getRoleAdmin(role)) {
-        // to prevent invalid token minted in pegged contract
+        // to prevent invalid token minted by admin in pegged contract
         require(role != MINTER_ROLE, "cannot grant MINTER_ROLE");
 
         super.grantRole(role, account);
+    }
+
+    function transferFrom(
+        address from,
+        address to,
+        uint256 tokenId
+    ) public override {
+        // user should call safeTransferFrom to trigger IERC721Receiver callback
+        require(to != _bridge, "use safeTransferFrom to cross NFT");
+
+        super.transferFrom(from, to, tokenId);
     }
 
 }
