@@ -1,16 +1,14 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-import "./Initializable.sol";
-import "./PeggedTokenDeployer.sol";
+import "./Bridge.sol";
 import "./PeggedERC721.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
-import "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
 import "@openzeppelin/contracts/token/ERC721/extensions/IERC721Metadata.sol";
 import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 import "@openzeppelin/contracts/utils/math/Math.sol";
 
-contract EvmSide is Initializable, PeggedTokenDeployer, IERC721Receiver {
+contract EvmSide is Bridge {
     using EnumerableSet for EnumerableSet.AddressSet;
     using EnumerableSet for EnumerableSet.UintSet;
     using Math for uint256;
@@ -31,9 +29,8 @@ contract EvmSide is Initializable, PeggedTokenDeployer, IERC721Receiver {
         uint256 tokenId
     );
 
-    function initialize(address beacon_) public {
-        Initializable._initialize();
-        PeggedTokenDeployer._initialize(beacon_);
+    function initialize(address beacon) public {
+        Bridge._initialize(beacon);
     }
 
     /**
@@ -101,28 +98,15 @@ contract EvmSide is Initializable, PeggedTokenDeployer, IERC721Receiver {
         PeggedERC721(evmToken).burn(tokenId);
     }
 
-    /**
-     * @dev Implements the IERC721Receiver interface for users to lock tokens via IERC721.safeTransferFrom,
-     * so that user could withdraw token from eSpace (pegged) to core space (origin) in advance.
-     */
-    function onERC721Received(
-        address operator,
-        address from,
+    function _onERC721Received(
+        address operator,   // evm operator
+        address from,       // evm from
         uint256 tokenId,
-        bytes calldata data
-    ) public override returns (bytes4) {
-        // parse cfx account from data
-        require(data.length == 20, "data should be cfx address");
-        address cfxAccount = abi.decode(data, (address));
-        require(cfxAccount != address(0), "cfx address not provided");
-
+        address to          // cfx to
+    ) internal override {
         // lock token to withdraw from cfx side
-        address evmToken = msg.sender;
-        require(_lockedTokens[evmToken][cfxAccount].add(tokenId), "token already locked");
-
-        emit TokenLocked(evmToken, operator, from, cfxAccount, tokenId);
-
-        return IERC721Receiver.onERC721Received.selector;
+        require(_lockedTokens[msg.sender][to].add(tokenId), "token already locked");
+        emit TokenLocked(msg.sender, operator, from, to, tokenId);
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////////

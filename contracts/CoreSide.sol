@@ -1,18 +1,16 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-import "./Initializable.sol";
-import "./PeggedTokenDeployer.sol";
+import "./Bridge.sol";
 import "./EvmSide.sol";
 import "./PeggedERC721.sol";
 import "@openzeppelin/contracts/access/AccessControlEnumerable.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
-import "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
 import "@openzeppelin/contracts/token/ERC721/extensions/IERC721Metadata.sol";
 import "@confluxfans/contracts/InternalContracts/InternalContractsHandler.sol";
 import "@confluxfans/contracts/InternalContracts/InternalContractsLib.sol";
 
-contract CoreSide is Initializable, PeggedTokenDeployer, AccessControlEnumerable, InternalContractsHandler, IERC721Receiver {
+contract CoreSide is Bridge, AccessControlEnumerable, InternalContractsHandler {
 
     bytes32 public constant DEPLOYER_ROLE = keccak256("DEPLOYER_ROLE");
 
@@ -69,9 +67,8 @@ contract CoreSide is Initializable, PeggedTokenDeployer, AccessControlEnumerable
         uint256 tokenId
     );
 
-    function initialize(bytes20 evmSide_, address beacon_) public {
-        Initializable._initialize();
-        PeggedTokenDeployer._initialize(beacon_);
+    function initialize(bytes20 evmSide_, address beacon) public {
+        Bridge._initialize(beacon);
 
         evmSide = evmSide_;
 
@@ -112,30 +109,20 @@ contract CoreSide is Initializable, PeggedTokenDeployer, AccessControlEnumerable
         allCfxTokens.push(cfxToken);
     }
 
-    /**
-     * @dev Implements the IERC721Receiver interface for users to cross NFT via IERC721.safeTransferFrom.
-     */
-    function onERC721Received(
-        address operator,
-        address from,
+    function _onERC721Received(
+        address operator,   // cfx operator
+        address from,       // cfx from
         uint256 tokenId,
-        bytes calldata data
-    ) public override returns (bytes4) {
-        // parse evm account from data
-        require(data.length == 20, "data should be evm address");
-        address evmAccount = abi.decode(data, (address));
-        require(evmAccount != address(0), "evm address not provided");
-
+        address to          // evm to
+    ) internal override {
         if (core2evmTokens[msg.sender] != bytes20(0)) {
             // cross origin token from core space to eSpace as pegged
-            _crossToEvm(operator, from, tokenId, evmAccount);
+            _crossToEvm(operator, from, tokenId, to);
         } else {
             // withdraw pegged token on core space to eSpace
             require(peggedCore2EvmTokens[msg.sender] != bytes20(0), "invalid token received");
-            _withdrawToEvm(operator, from, tokenId, evmAccount);
+            _withdrawToEvm(operator, from, tokenId, to);
         }
-
-        return IERC721Receiver.onERC721Received.selector;
     }
 
     /**

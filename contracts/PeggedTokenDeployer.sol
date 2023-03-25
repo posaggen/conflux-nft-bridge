@@ -22,7 +22,7 @@ abstract contract PeggedTokenDeployer is Ownable {
     // all pegged tokens deployed
     EnumerableSet.AddressSet internal _peggedTokens;
 
-    function _initialize(address beacon_) internal {
+    function _initialize(address beacon_) internal virtual {
         beacon = beacon_;
 
         _transferOwnership(msg.sender);
