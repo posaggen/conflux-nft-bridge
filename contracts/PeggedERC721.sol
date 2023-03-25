@@ -31,8 +31,6 @@ contract PeggedERC721 is
     // used on core space to read token URI from eSpace
     bytes20 public evmSide;
 
-    address private _bridge;
-
     constructor() ERC721("", "") {
         // no baseURL provided
     }
@@ -50,8 +48,6 @@ contract PeggedERC721 is
         _symbol_ = symbol_;
 
         evmSide = evmSide_;
-
-        _bridge = msg.sender;
 
         _grantRole(DEFAULT_ADMIN_ROLE, admin);
         _grantRole(PAUSER_ROLE, admin);
@@ -126,17 +122,6 @@ contract PeggedERC721 is
         require(role != MINTER_ROLE, "cannot grant MINTER_ROLE");
 
         super.grantRole(role, account);
-    }
-
-    function transferFrom(
-        address from,
-        address to,
-        uint256 tokenId
-    ) public override {
-        // user should call safeTransferFrom to trigger IERC721Receiver callback
-        require(to != _bridge, "use safeTransferFrom to cross NFT");
-
-        super.transferFrom(from, to, tokenId);
     }
 
 }
