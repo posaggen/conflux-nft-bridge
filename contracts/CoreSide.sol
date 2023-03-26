@@ -136,7 +136,7 @@ contract CoreSide is Bridge, AccessControlEnumerable, InternalContractsHandler {
 
         // mint on eSpace via cross space internal contract
         InternalContracts.CROSS_SPACE_CALL.callEVM(evmSide,
-            abi.encodeWithSelector(EvmSide.mint.selector, address(evmToken), evmAccount, uri)
+            abi.encodeWithSelector(EvmSide.mint.selector, address(evmToken), evmAccount, tokenId, uri)
         );
 
         emit CrossToEvm(cfxToken, evmToken, operator, from, bytes20(evmAccount), tokenId);
