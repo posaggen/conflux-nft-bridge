@@ -100,11 +100,11 @@ contract CoreSide is Bridge, AccessControlEnumerable, InternalContractsHandler {
             symbol = IERC721Metadata(cfxToken).symbol();
         }
 
-        bool erc721 = IERC165(cfxToken).supportsInterface(type(IERC721).interfaceId);
+        NftType nftType = _getNftType(cfxToken);
 
         // deply on eSpace via cross space internal contract
         bytes memory result = InternalContracts.CROSS_SPACE_CALL.callEVM(evmSide,
-            abi.encodeWithSelector(EvmSide.deploy.selector, erc721, name, symbol)
+            abi.encodeWithSelector(EvmSide.deploy.selector, nftType, name, symbol)
         );
 
         address evmToken = abi.decode(result, (address));
@@ -178,13 +178,13 @@ contract CoreSide is Bridge, AccessControlEnumerable, InternalContractsHandler {
             abi.encodeWithSelector(EvmSide.preDeployCfx.selector, address(evmToken))
         );
 
-        (bool erc721, string memory name2, string memory symbol2) = abi.decode(result, (bool, string, string));
+        (NftType nftType, string memory name2, string memory symbol2) = abi.decode(result, (NftType, string, string));
 
         address cfxToken;
         if (bytes(name).length == 0 || bytes(symbol).length == 0) {
-            cfxToken = _deployPeggedToken(erc721, name2, symbol2, evmToken);
+            cfxToken = _deployPeggedToken(nftType, name2, symbol2, evmToken);
         } else {
-            cfxToken = _deployPeggedToken(erc721, name, symbol, evmToken);
+            cfxToken = _deployPeggedToken(nftType, name, symbol, evmToken);
         }
 
         evm2coreTokens[evmToken] = cfxToken;

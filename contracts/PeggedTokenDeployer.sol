@@ -19,22 +19,31 @@ abstract contract PeggedTokenDeployer is Ownable {
     using Address for address;
     using EnumerableSet for EnumerableSet.AddressSet;
 
-    event ContractCreated(address indexed token, bool indexed erc721, string name, string symbol);
+    enum NftType { ERC721, ERC1155 }
 
-    // beacon for pegged ERC721 token
-    address public beacon721;
+    event ContractCreated(address indexed token, NftType indexed nftType, string name, string symbol);
 
-    // beacon for pegged ERC1155 token
-    address public beacon1155;
+    // beacon for pegged tokens
+    mapping(NftType => address) public beacons;
 
     // all pegged tokens deployed
     EnumerableSet.AddressSet internal _peggedTokens;
 
-    function _initialize(address beacon721_, address beacon1155_) internal virtual {
-        beacon721 = beacon721_;
-        beacon1155 = beacon1155_;
+    function _initialize(address beacon721, address beacon1155) internal virtual {
+        beacons[NftType.ERC721] = beacon721;
+        beacons[NftType.ERC1155] = beacon1155;
 
         _transferOwnership(msg.sender);
+    }
+
+    function _getNftType(address token) internal view returns (NftType) {
+        if (IERC165(token).supportsInterface(type(IERC721).interfaceId)) {
+            return NftType.ERC721;
+        }
+
+        require(IERC165(token).supportsInterface(type(IERC1155).interfaceId), "unsupported NFT type");
+
+        return NftType.ERC1155;
     }
 
     modifier onlyPeggable(address originToken) {
@@ -61,22 +70,14 @@ abstract contract PeggedTokenDeployer is Ownable {
      * @dev Deploy pegged NFT contract with specified `name` and `symbol`. To deploy pegged contract on core space,
      * `evmOriginToken` should be provided so as to read token URI from eSpace via cross space internal contract.
      */
-    function _deployPeggedToken(bool erc721, string memory name, string memory symbol, bytes20 evmOriginToken) internal returns (address) {
-        address token;
-
-        if (erc721) {
-            require(beacon721 != address(0), "beacon721 uninitialized");
-            token = address(new BeaconProxy(beacon721, ""));
-        } else {
-            require(beacon1155 != address(0), "beacon1155 uninitialized");
-            token = address(new BeaconProxy(beacon1155, ""));
-        }
-
+    function _deployPeggedToken(NftType nftType, string memory name, string memory symbol, bytes20 evmOriginToken) internal returns (address) {
+        require(beacons[nftType] != address(0), "beacon uninitialized");
+        
+        address token = address(new BeaconProxy(beacons[nftType], ""));
         require(_peggedTokens.add(token), "duplicated pegged token created");
-
         PeggedNFT(token).initialize(name, symbol, evmOriginToken, owner());
 
-        emit ContractCreated(token, erc721, name, symbol);
+        emit ContractCreated(token, nftType, name, symbol);
 
         return token;
     }

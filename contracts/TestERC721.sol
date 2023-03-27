@@ -4,6 +4,22 @@ pragma solidity ^0.8.0;
 import "@openzeppelin/contracts/token/ERC721/extensions/ERC721Enumerable.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 
+contract TestERC721Factory {
+
+    event Created(address indexed token);
+
+    function deploy(
+        string memory name,
+        string memory symbol,
+        string memory placeholderURI
+    ) public {
+        TestERC721 token = new TestERC721(name, symbol, placeholderURI);
+        token.transferOwnership(msg.sender);
+        emit Created(address(token));
+    }
+
+}
+
 contract TestERC721 is ERC721Enumerable, Ownable {
 
     string public placeholderURI;
