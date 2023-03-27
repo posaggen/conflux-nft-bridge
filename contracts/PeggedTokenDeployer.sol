@@ -6,6 +6,7 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/proxy/beacon/BeaconProxy.sol";
 import "@openzeppelin/contracts/proxy/beacon/UpgradeableBeacon.sol";
 import "@openzeppelin/contracts/token/ERC721/extensions/IERC721Metadata.sol";
+import "@openzeppelin/contracts/token/ERC721/extensions/IERC721Enumerable.sol";
 import "@openzeppelin/contracts/utils/introspection/IERC165.sol";
 import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 
@@ -32,6 +33,7 @@ abstract contract PeggedTokenDeployer is Ownable {
         require(originToken.isContract(), "token is not contract");
         require(!_peggedTokens.contains(originToken), "cycle pegged");
         require(IERC165(originToken).supportsInterface(type(IERC721Metadata).interfaceId), "IERC721Metadata required");
+        require(IERC165(originToken).supportsInterface(type(IERC721Enumerable).interfaceId), "IERC721Enumerable required");
         _;
     }
 

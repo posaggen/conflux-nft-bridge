@@ -1,57 +1,27 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-import "./Initializable.sol";
+import "./PeggedNFT.sol";
 import "@openzeppelin/contracts/token/ERC721/extensions/ERC721URIStorage.sol";
 import "@openzeppelin/contracts/token/ERC721/extensions/ERC721Pausable.sol";
 import "@openzeppelin/contracts/token/ERC721/extensions/ERC721Enumerable.sol";
 import "@openzeppelin/contracts/token/ERC721/extensions/ERC721Burnable.sol";
 import "@openzeppelin/contracts/token/ERC721/extensions/IERC721Metadata.sol";
 import "@openzeppelin/contracts/access/AccessControlEnumerable.sol";
+import "@confluxfans/contracts/InternalContracts/InternalContractsHandler.sol";
 import "@confluxfans/contracts/InternalContracts/InternalContractsLib.sol";
 
 /**
  * @dev Pegged NFT contracts that deployed on core space or eSpace via beacon proxy.
  */
 contract PeggedERC721 is
+    PeggedNFT,
     ERC721Enumerable,
     ERC721Burnable,
     ERC721Pausable,
-    ERC721URIStorage,
-    Initializable,
-    AccessControlEnumerable
+    ERC721URIStorage
 {
-    bytes32 public constant PAUSER_ROLE = keccak256("PAUSER_ROLE");
-    bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
-
-    // to support initialization out of constructor
-    string private _name_;
-    string private _symbol_;
-
-    // used on core space to read token URI from eSpace
-    bytes20 public evmSide;
-
     constructor() ERC721("", "") {
-        // no baseURL provided
-    }
-
-    // to support deployment behind a proxy
-    function initialize(
-        string memory name_,
-        string memory symbol_,
-        bytes20 evmSide_,
-        address admin
-    ) public {
-        Initializable._initialize();
-
-        _name_ = name_;
-        _symbol_ = symbol_;
-
-        evmSide = evmSide_;
-
-        _grantRole(DEFAULT_ADMIN_ROLE, admin);
-        _grantRole(PAUSER_ROLE, admin);
-        _grantRole(MINTER_ROLE, msg.sender);
     }
 
     function name() public view override returns (string memory) {
@@ -73,12 +43,17 @@ contract PeggedERC721 is
         }
     }
 
-    function pause() public onlyRole(PAUSER_ROLE) {
-        _pause();
-    }
+    function tokenURI(uint256 tokenId) public view virtual override(ERC721, ERC721URIStorage) returns (string memory) {
+        if (evmSide == bytes20(0)) {
+            return ERC721URIStorage.tokenURI(tokenId);
+        }
 
-    function unpause() public onlyRole(PAUSER_ROLE) {
-        _unpause();
+        // read token URI from eSpace for pegged token on core space
+        bytes memory result = InternalContracts.CROSS_SPACE_CALL.staticCallEVM(evmSide,
+            abi.encodeWithSelector(IERC721Metadata.tokenURI.selector, tokenId)
+        );
+
+        return abi.decode(result, (string));
     }
 
     function _beforeTokenTransfer(
@@ -102,26 +77,6 @@ contract PeggedERC721 is
 
     function _burn(uint256 tokenId) internal virtual override(ERC721, ERC721URIStorage) {
         super._burn(tokenId);
-    }
-
-    function tokenURI(uint256 tokenId) public view virtual override(ERC721, ERC721URIStorage) returns (string memory) {
-        if (evmSide == bytes20(0)) {
-            return ERC721URIStorage.tokenURI(tokenId);
-        }
-
-        // read token URI from eSpace for pegged token on core space
-        bytes memory result = InternalContracts.CROSS_SPACE_CALL.staticCallEVM(evmSide,
-            abi.encodeWithSelector(IERC721Metadata.tokenURI.selector, tokenId)
-        );
-
-        return abi.decode(result, (string));
-    }
-
-    function grantRole(bytes32 role, address account) public override onlyRole(getRoleAdmin(role)) {
-        // to prevent invalid token minted by admin in pegged contract
-        require(role != MINTER_ROLE, "cannot grant MINTER_ROLE");
-
-        super.grantRole(role, account);
     }
 
 }
