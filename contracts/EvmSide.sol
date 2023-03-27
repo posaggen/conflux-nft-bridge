@@ -29,8 +29,8 @@ contract EvmSide is Bridge {
         uint256 tokenId
     );
 
-    function initialize(address beacon) public {
-        Bridge._initialize(beacon);
+    function initialize(address beacon721, address beacon1155) public {
+        Bridge._initialize(beacon721, beacon1155);
     }
 
     /**
@@ -77,8 +77,8 @@ contract EvmSide is Bridge {
      * @dev Create a NFT contract with beacon proxy on eSpace. This is called by core space
      * via cross space internal contract.
      */
-    function deploy(string memory name, string memory symbol) public onlyCfxSide returns (address) {
-        return _deployPeggedToken(name, symbol, bytes20(0));
+    function deploy(bool erc721, string memory name, string memory symbol) public onlyCfxSide returns (address) {
+        return _deployPeggedToken(erc721, name, symbol, bytes20(0));
     }
 
     /**
@@ -118,8 +118,17 @@ contract EvmSide is Bridge {
     /**
      * @dev Check if the specified `evmToken` is valid to create pegged NFT contract on core space.
      */
-    function preDeployCfx(address evmToken) public view onlyCfxSide onlyPeggable(evmToken) returns (string memory name, string memory symbol) {
-        return (IERC721Metadata(evmToken).name(), IERC721Metadata(evmToken).symbol());
+    function preDeployCfx(address evmToken)
+        public
+        view
+        onlyCfxSide onlyPeggable(evmToken)
+        returns (bool erc721, string memory name, string memory symbol)
+    {
+        return (
+            IERC165(evmToken).supportsInterface(type(IERC721).interfaceId),
+            IERC721Metadata(evmToken).name(),
+            IERC721Metadata(evmToken).symbol()
+        );
     }
 
     /**

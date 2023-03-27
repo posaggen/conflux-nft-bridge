@@ -8,9 +8,9 @@ import "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
 
 abstract contract Bridge is Initializable, PeggedTokenDeployer, IERC721Receiver {
 
-    function _initialize(address beacon) internal override {
+    function _initialize(address beacon721, address beacon1155) internal override {
         Initializable._initialize();
-        super._initialize(beacon);
+        super._initialize(beacon721, beacon1155);
     }
 
     /**

@@ -67,8 +67,8 @@ contract CoreSide is Bridge, AccessControlEnumerable, InternalContractsHandler {
         uint256 tokenId
     );
 
-    function initialize(bytes20 evmSide_, address beacon) public {
-        Bridge._initialize(beacon);
+    function initialize(bytes20 evmSide_, address beacon721, address beacon1155) public {
+        Bridge._initialize(beacon721, beacon1155);
 
         evmSide = evmSide_;
 
@@ -95,13 +95,16 @@ contract CoreSide is Bridge, AccessControlEnumerable, InternalContractsHandler {
 
         // read NFT metadata from cfx token
         if (bytes(name).length == 0 || bytes(symbol).length == 0) {
+            // also suitable for ERC1155
             name = IERC721Metadata(cfxToken).name();
             symbol = IERC721Metadata(cfxToken).symbol();
         }
 
+        bool erc721 = IERC165(cfxToken).supportsInterface(type(IERC721).interfaceId);
+
         // deply on eSpace via cross space internal contract
         bytes memory result = InternalContracts.CROSS_SPACE_CALL.callEVM(evmSide,
-            abi.encodeWithSelector(EvmSide.deploy.selector, name, symbol)
+            abi.encodeWithSelector(EvmSide.deploy.selector, erc721, name, symbol)
         );
 
         address evmToken = abi.decode(result, (address));
@@ -175,11 +178,14 @@ contract CoreSide is Bridge, AccessControlEnumerable, InternalContractsHandler {
             abi.encodeWithSelector(EvmSide.preDeployCfx.selector, address(evmToken))
         );
 
-        if (bytes(name).length == 0 || bytes(symbol).length == 0) {
-            (name, symbol) = abi.decode(result, (string, string));
-        }
+        (bool erc721, string memory name2, string memory symbol2) = abi.decode(result, (bool, string, string));
 
-        address cfxToken = _deployPeggedToken(name, symbol, evmToken);
+        address cfxToken;
+        if (bytes(name).length == 0 || bytes(symbol).length == 0) {
+            cfxToken = _deployPeggedToken(erc721, name2, symbol2, evmToken);
+        } else {
+            cfxToken = _deployPeggedToken(erc721, name, symbol, evmToken);
+        }
 
         evm2coreTokens[evmToken] = cfxToken;
         peggedCore2EvmTokens[cfxToken] = evmToken;
