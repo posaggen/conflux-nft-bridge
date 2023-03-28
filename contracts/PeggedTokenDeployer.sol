@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-import "./PeggedERC721.sol";
+import "./PeggedNFTUtil.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/proxy/beacon/BeaconProxy.sol";
 import "@openzeppelin/contracts/proxy/beacon/UpgradeableBeacon.sol";
@@ -19,31 +19,24 @@ abstract contract PeggedTokenDeployer is Ownable {
     using Address for address;
     using EnumerableSet for EnumerableSet.AddressSet;
 
-    enum NftType { ERC721, ERC1155 }
-
-    event ContractCreated(address indexed token, NftType indexed nftType, string name, string symbol);
+    event ContractCreated(
+        address indexed token,
+        uint256 indexed nftType,
+        string name,
+        string symbol
+    );
 
     // beacon for pegged tokens
-    mapping(NftType => address) public beacons;
+    mapping(uint256 => address) public beacons;
 
     // all pegged tokens deployed
     EnumerableSet.AddressSet internal _peggedTokens;
 
     function _initialize(address beacon721, address beacon1155) internal virtual {
-        beacons[NftType.ERC721] = beacon721;
-        beacons[NftType.ERC1155] = beacon1155;
+        beacons[PeggedNFTUtil.NFT_TYPE_ERC721] = beacon721;
+        beacons[PeggedNFTUtil.NFT_TYPE_ERC1155] = beacon1155;
 
         _transferOwnership(msg.sender);
-    }
-
-    function _getNftType(address token) internal view returns (NftType) {
-        if (IERC165(token).supportsInterface(type(IERC721).interfaceId)) {
-            return NftType.ERC721;
-        }
-
-        require(IERC165(token).supportsInterface(type(IERC1155).interfaceId), "unsupported NFT type");
-
-        return NftType.ERC1155;
     }
 
     modifier onlyPeggable(address originToken) {
@@ -70,7 +63,12 @@ abstract contract PeggedTokenDeployer is Ownable {
      * @dev Deploy pegged NFT contract with specified `name` and `symbol`. To deploy pegged contract on core space,
      * `evmOriginToken` should be provided so as to read token URI from eSpace via cross space internal contract.
      */
-    function _deployPeggedToken(NftType nftType, string memory name, string memory symbol, bytes20 evmOriginToken) internal returns (address) {
+    function _deployPeggedToken(
+        uint256 nftType,
+        string memory name,
+        string memory symbol,
+        bytes20 evmOriginToken
+    ) internal returns (address) {
         require(beacons[nftType] != address(0), "beacon uninitialized");
         
         address token = address(new BeaconProxy(beacons[nftType], ""));
