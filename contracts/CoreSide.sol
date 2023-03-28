@@ -4,14 +4,11 @@ pragma solidity ^0.8.0;
 import "./Bridge.sol";
 import "./EvmSide.sol";
 import "./PeggedNFTUtil.sol";
-import "@openzeppelin/contracts/access/AccessControlEnumerable.sol";
 import "@openzeppelin/contracts/token/ERC721/extensions/IERC721Metadata.sol";
 import "@confluxfans/contracts/InternalContracts/InternalContractsHandler.sol";
 import "@confluxfans/contracts/InternalContracts/InternalContractsLib.sol";
 
-contract CoreSide is Bridge, AccessControlEnumerable, InternalContractsHandler {
-
-    bytes32 public constant DEPLOYER_ROLE = keccak256("DEPLOYER_ROLE");
+contract CoreSide is Bridge, InternalContractsHandler {
 
     // interact via cross space internal contract
     bytes20 public evmSide;
@@ -75,17 +72,10 @@ contract CoreSide is Bridge, AccessControlEnumerable, InternalContractsHandler {
 
         evmSide = evmSide_;
 
-        _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
-        _grantRole(DEPLOYER_ROLE, msg.sender);
-
         // connect to evm side
         InternalContracts.CROSS_SPACE_CALL.callEVM(evmSide,
             abi.encodeWithSelector(EvmSide.setCfxSide.selector)
         );
-    }
-
-    function supportsInterface(bytes4 interfaceId) public view virtual override(AccessControlEnumerable, Bridge) returns (bool) {
-        return super.supportsInterface(interfaceId);
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -95,17 +85,23 @@ contract CoreSide is Bridge, AccessControlEnumerable, InternalContractsHandler {
     ////////////////////////////////////////////////////////////////////////////////////////////////////
 
     /**
-     * @dev Deploy NFT contract on eSpace for specified `cfxToken` with optional `name` and `symbol`.
+     * @dev Deploy NFT contract on eSpace for specified `cfxToken` with original `name` and `symbol`.
      */
-    function deployEvm(address cfxToken, string memory name, string memory symbol) public onlyRole(DEPLOYER_ROLE) onlyPeggable(cfxToken) {
-        require(core2evmTokens[cfxToken] == bytes20(0), "deployed already");
+    function deployEvm(address cfxToken) public onlyPeggable(cfxToken) {
+        string memory name = IERC721Metadata(cfxToken).name();
+        string memory symbol = IERC721Metadata(cfxToken).symbol();
+        _deployEvm(cfxToken, name, symbol);
+    }
 
-        // read NFT metadata from cfx token
-        if (bytes(name).length == 0 || bytes(symbol).length == 0) {
-            // also suitable for ERC1155
-            name = IERC721Metadata(cfxToken).name();
-            symbol = IERC721Metadata(cfxToken).symbol();
-        }
+    /**
+     * @dev Deploy NFT contract on eSpace for specified `cfxToken` with `name` and `symbol` by owner only.
+     */
+    function deployEvmByAdmin(address cfxToken, string memory name, string memory symbol) public onlyPeggable(cfxToken) onlyOwner {
+        _deployEvm(cfxToken, name, symbol);
+    }
+
+    function _deployEvm(address cfxToken, string memory name, string memory symbol) private {
+        require(core2evmTokens[cfxToken] == bytes20(0), "deployed already");
 
         uint256 nftType = PeggedNFTUtil.nftType(cfxToken);
 
@@ -193,9 +189,20 @@ contract CoreSide is Bridge, AccessControlEnumerable, InternalContractsHandler {
     ////////////////////////////////////////////////////////////////////////////////////////////////////
 
     /**
-     * @dev Deploy NFT contract on core space for specified `evmToken` with optional `name` and `symbol`.
+     * @dev Deploy NFT contract on core space for specified `evmToken` with original `name` and `symbol`.
      */
-    function deployCfx(bytes20 evmToken, string memory name, string memory symbol) public onlyRole(DEPLOYER_ROLE) {
+    function deployCfx(bytes20 evmToken) public {
+        _deployCfx(evmToken, "", "");
+    }
+
+    /**
+     * @dev Deploy NFT contract on core space for specified `evmToken` with `name` and `symbol` by owner only.
+     */
+    function deployCfxByAdmin(bytes20 evmToken, string memory name, string memory symbol) public onlyOwner {
+       _deployCfx(evmToken, name, symbol);
+    }
+
+    function _deployCfx(bytes20 evmToken, string memory name, string memory symbol) private {
         require(evm2coreTokens[evmToken] == address(0), "deployed already");
 
         bytes memory result = InternalContracts.CROSS_SPACE_CALL.staticCallEVM(evmSide,

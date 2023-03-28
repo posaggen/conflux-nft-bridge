@@ -70,7 +70,9 @@ abstract contract PeggedTokenDeployer is Ownable {
         bytes20 evmOriginToken
     ) internal returns (address) {
         require(beacons[nftType] != address(0), "beacon uninitialized");
-        
+        require(bytes(name).length > 0, "name required");
+        require(bytes(symbol).length > 0, "symbol required");
+
         address token = address(new BeaconProxy(beacons[nftType], ""));
         require(_peggedTokens.add(token), "duplicated pegged token created");
         PeggedNFT(token).initialize(name, symbol, evmOriginToken, owner());
