@@ -15,6 +15,7 @@ abstract contract Bridge is Initializable, PeggedTokenDeployer, IERC721Receiver,
     }
 
     function _onNFTReceived(
+        address nft,
         address operator,
         address from,
         uint256[] memory ids,       // one id for ERC721
@@ -35,9 +36,25 @@ abstract contract Bridge is Initializable, PeggedTokenDeployer, IERC721Receiver,
         uint256[] memory amounts = _asSingletonArray(1);
         address to = _parseToAddress(data);
 
-        _onNFTReceived(operator, from, ids, amounts, to);
+        _onNFTReceived(msg.sender, operator, from, ids, amounts, to);
 
         return IERC721Receiver.onERC721Received.selector;
+    }
+
+    /**
+     * @dev Allow users to cross ERC721 tokens in batch.
+     */
+    function safeBatchTransferFrom(address erc721, uint256[] memory ids, bytes memory data) public {
+        require(PeggedNFTUtil.nftType(erc721) == PeggedNFTUtil.NFT_TYPE_ERC721, "ERC721 token required");
+
+        uint256[] memory amounts = new uint256[](ids.length);
+        for (uint256 i = 0; i < ids.length; i++) {
+            IERC721(erc721).transferFrom(msg.sender, address(this), ids[i]);
+            amounts[i] = 1;
+        }
+
+        address to = _parseToAddress(data);
+        _onNFTReceived(erc721, msg.sender, msg.sender, ids, amounts, to);
     }
 
     /**
@@ -54,7 +71,7 @@ abstract contract Bridge is Initializable, PeggedTokenDeployer, IERC721Receiver,
         uint256[] memory amounts = _asSingletonArray(value);
         address to = _parseToAddress(data);
 
-        _onNFTReceived(operator, from, ids, amounts, to);
+        _onNFTReceived(msg.sender, operator, from, ids, amounts, to);
 
         return IERC1155Receiver.onERC1155Received.selector;
     }
@@ -73,7 +90,7 @@ abstract contract Bridge is Initializable, PeggedTokenDeployer, IERC721Receiver,
 
         address to = _parseToAddress(data);
 
-        _onNFTReceived(operator, from, ids, values, to);
+        _onNFTReceived(msg.sender, operator, from, ids, values, to);
 
         return IERC1155Receiver.onERC1155BatchReceived.selector;
     }

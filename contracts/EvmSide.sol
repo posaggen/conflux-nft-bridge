@@ -8,6 +8,7 @@ import "@openzeppelin/contracts/utils/math/Math.sol";
 
 contract EvmSide is Bridge {
     using EnumerableMap for EnumerableMap.UintToUintMap;
+    using EnumerableSet for EnumerableSet.AddressSet;
     using Math for uint256;
 
     // privileged cfx side to mint/burn tokens on eSpace
@@ -17,6 +18,9 @@ contract EvmSide is Bridge {
     // evm token => cfx account => token id => amount
     // amount is always 1 in case of ERC721
     mapping(address => mapping(address => EnumerableMap.UintToUintMap)) private _lockedTokens;
+
+    // all evm tokens that have been pegged on core space
+    EnumerableSet.AddressSet private _originTokens;
 
     // emitted when user lock tokens for core space users to operate in advance
     event TokenLocked(
@@ -125,18 +129,21 @@ contract EvmSide is Bridge {
      * @dev Lock tokens for `to` cfx address to operate on core space in advance.
      */
     function _onNFTReceived(
+        address nft,
         address operator,
         address from,
         uint256[] memory ids,
         uint256[] memory amounts,
         address to
     ) internal override {
+        require(_peggedTokens.contains(nft) || _originTokens.contains(nft), "invalid token received");
+
         for (uint256 i = 0; i < ids.length; i++) {
-            (, uint256 locked) = _lockedTokens[msg.sender][to].tryGet(ids[i]);
-            _lockedTokens[msg.sender][to].set(ids[i], locked + amounts[i]);
+            (, uint256 locked) = _lockedTokens[nft][to].tryGet(ids[i]);
+            _lockedTokens[nft][to].set(ids[i], locked + amounts[i]);
         }
 
-        emit TokenLocked(msg.sender, operator, from, to, ids, amounts);
+        emit TokenLocked(nft, operator, from, to, ids, amounts);
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -150,10 +157,11 @@ contract EvmSide is Bridge {
      */
     function preDeployCfx(address evmToken)
         public
-        view
         onlyCfxSide onlyPeggable(evmToken)
         returns (uint256 nftType, string memory name, string memory symbol)
     {
+        _originTokens.add(evmToken);
+
         return (
             PeggedNFTUtil.nftType(evmToken),
             IERC721Metadata(evmToken).name(),

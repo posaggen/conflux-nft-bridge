@@ -116,19 +116,20 @@ contract CoreSide is Bridge, InternalContractsHandler {
     }
 
     function _onNFTReceived(
+        address nft,
         address operator,           // cfx operator
         address from,               // cfx from
         uint256[] memory ids,
         uint256[] memory amounts,
         address to                  // evm to
     ) internal override {
-        if (core2evmTokens[msg.sender] != bytes20(0)) {
+        if (core2evmTokens[nft] != bytes20(0)) {
             // cross origin token from core space to eSpace as pegged
-            _crossToEvm(operator, from, ids, amounts, to);
+            _crossToEvm(nft, operator, from, ids, amounts, to);
         } else {
             // withdraw pegged token on core space to eSpace
-            require(peggedCore2EvmTokens[msg.sender] != bytes20(0), "invalid token received");
-            _withdrawToEvm(operator, from, ids, amounts, to);
+            require(peggedCore2EvmTokens[nft] != bytes20(0), "invalid token received");
+            _withdrawToEvm(nft, operator, from, ids, amounts, to);
         }
     }
 
@@ -136,14 +137,15 @@ contract CoreSide is Bridge, InternalContractsHandler {
      * @dev Cross origin token from core space to eSpace as pegged.
      */
     function _crossToEvm(
+        address cfxToken,
         address operator,
         address from,
         uint256[] memory ids,
         uint256[] memory amounts,
         address evmAccount
     ) private {
-        address cfxToken = msg.sender;
         bytes20 evmToken = core2evmTokens[cfxToken];
+        require(evmToken != bytes20(0), "cfx token unsupported");
 
         string[] memory uris = new string[](ids.length);
         for (uint256 i = 0; i < ids.length; i++) {
@@ -205,7 +207,7 @@ contract CoreSide is Bridge, InternalContractsHandler {
     function _deployCfx(bytes20 evmToken, string memory name, string memory symbol) private {
         require(evm2coreTokens[evmToken] == address(0), "deployed already");
 
-        bytes memory result = InternalContracts.CROSS_SPACE_CALL.staticCallEVM(evmSide,
+        bytes memory result = InternalContracts.CROSS_SPACE_CALL.callEVM(evmSide,
             abi.encodeWithSelector(EvmSide.preDeployCfx.selector, address(evmToken))
         );
 
@@ -251,14 +253,15 @@ contract CoreSide is Bridge, InternalContractsHandler {
      * @dev Withdraw pegged token on core space back to eSpace.
      */
     function _withdrawToEvm(
+        address cfxToken,
         address operator,
         address from,
         uint256[] memory ids,
         uint256[] memory amounts,
         address evmAccount
     ) private {
-        address cfxToken = msg.sender;
         bytes20 evmToken = peggedCore2EvmTokens[cfxToken];
+        require(evmToken != bytes20(0), "cfx token unsupported");
 
         PeggedNFTUtil.batchBurn(cfxToken, ids, amounts);
 
