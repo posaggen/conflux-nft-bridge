@@ -48,9 +48,13 @@ contract TestERC1155 is CRC1155Metadata, CRC1155Enumerable, Ownable {
         _mintBatch(to, ids, amounts, "");
     }
 
+    function supportsInterface(bytes4 interfaceId) public view virtual override(CRC1155Enumerable, IERC165) returns (bool) {
+        return interfaceId == type(ICRC1155Metadata).interfaceId || super.supportsInterface(interfaceId);
+    }
+
 }
 
-contract TestERC721Factory {
+contract TestTokenFactory {
 
     event Created(address indexed token, uint256 eip);
 
