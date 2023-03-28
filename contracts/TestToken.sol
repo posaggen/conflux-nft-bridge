@@ -2,6 +2,7 @@
 pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/token/ERC721/extensions/ERC721Enumerable.sol";
 import "@confluxfans/contracts/token/CRC1155/extensions/CRC1155Metadata.sol";
 import "@confluxfans/contracts/token/CRC1155/extensions/CRC1155Enumerable.sol";
@@ -54,6 +55,17 @@ contract TestERC1155 is CRC1155Metadata, CRC1155Enumerable, Ownable {
 
 }
 
+contract TestERC20 is ERC20, Ownable {
+
+    constructor(string memory name, string memory symbol) ERC20(name, symbol) {
+    }
+
+    function mint(address to, uint256 amount) external {
+        _mint(to, amount);
+    }
+
+}
+
 contract TestTokenFactory {
 
     event Created(address indexed token, uint256 eip);
@@ -76,6 +88,12 @@ contract TestTokenFactory {
         TestERC1155 token = new TestERC1155(name, symbol, uri);
         token.transferOwnership(msg.sender);
         emit Created(address(token), 1155);
+    }
+
+    function deploy20(string memory name, string memory symbol) public {
+        TestERC20 token = new TestERC20(name, symbol);
+        token.transferOwnership(msg.sender);
+        emit Created(address(token), 20);
     }
 
 }
