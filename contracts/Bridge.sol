@@ -82,22 +82,6 @@ abstract contract Bridge is Initializable, PeggedTokenDeployer, IERC721Receiver,
         return interfaceId == type(IERC721Receiver).interfaceId || super.supportsInterface(interfaceId);
     }
 
-    /**
-     * @dev For owner to withdraw tokens to `receipient` if user use `transferFrom` to cross NFT, which
-     * leads to `IERC721Receiver` callback not triggered.
-     */
-    function withdraw(address token, address receipient, uint256 tokenId) public onlyOwner {
-        // TODO withdraw ERC1155 token, but not safe
-        IERC721(token).transferFrom(address(this), receipient, tokenId);
-    }
-
-    function withdrawBatch(address token, address receipient, uint256[] memory tokenIds) public onlyOwner {
-        // TODO withdraw ERC1155 token
-        for (uint256 i = 0; i < tokenIds.length; i++) {
-            IERC721(token).transferFrom(address(this), receipient, tokenIds[i]);
-        }
-    }
-
     function _parseToAddress(bytes memory data) private pure returns (address to) {
         require(data.length == 20, "invalid to address");
         assembly {
