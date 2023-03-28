@@ -44,6 +44,10 @@ contract TestERC1155 is CRC1155Metadata, CRC1155Enumerable, Ownable {
     ) ERC1155(uri) CRC1155Metadata(name, symbol) {
     }
 
+    function setURI(string memory uri) public onlyOwner {
+        _setURI(uri);
+    }
+
     function mint(address to, uint256[] memory ids, uint256[] memory amounts) public onlyOwner {
         require(ids.length == amounts.length, "ids and amounts length mismatch");
         _mintBatch(to, ids, amounts, "");
@@ -62,6 +66,10 @@ contract TestERC20 is ERC20, Ownable {
 
     function mint(address to, uint256 amount) external {
         _mint(to, amount);
+    }
+
+    function burn(uint256 amount) external {
+        _burn(msg.sender, amount);
     }
 
 }
