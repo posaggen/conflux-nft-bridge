@@ -3,11 +3,15 @@ pragma solidity ^0.8.0;
 
 import "./PeggedERC721.sol";
 import "./PeggedERC1155.sol";
+import "@openzeppelin/contracts/access/IAccessControl.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/introspection/IERC165.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
+import "@openzeppelin/contracts/token/ERC721/extensions/IERC721Enumerable.sol";
 import "@openzeppelin/contracts/token/ERC721/extensions/IERC721Metadata.sol";
 import "@openzeppelin/contracts/token/ERC1155/IERC1155.sol";
 import "@openzeppelin/contracts/token/ERC1155/extensions/IERC1155MetadataURI.sol";
+import "@confluxfans/contracts/token/CRC1155/extensions/ICRC1155Enumerable.sol";
 
 library PeggedNFTUtil {
 
@@ -31,6 +35,29 @@ library PeggedNFTUtil {
         }
 
         return IERC1155MetadataURI(token).uri(id);
+    }
+
+    function isOwnerOrAdmin(address token, address account) internal view returns (bool) {
+        if (IERC165(token).supportsInterface(type(IAccessControl).interfaceId)) {
+            // DEFAULT_ADMIN_ROLE
+            if (IAccessControl(token).hasRole(0x00, account)) {
+                return true;
+            }
+        }
+
+        try Ownable(token).owner() returns (address owner) {
+            return account == owner;
+        } catch {
+            return false;
+        }
+    }
+
+    function totalSupply(address token) internal view returns (uint256) {
+        if (nftType(token) == NFT_TYPE_ERC721) {
+            return IERC721Enumerable(token).totalSupply();
+        }
+
+        return ICRC1155Enumerable(token).totalSupply();
     }
 
     function batchMint(address token, address to, uint256[] memory ids, uint256[] memory amounts, string[] memory uris) internal {

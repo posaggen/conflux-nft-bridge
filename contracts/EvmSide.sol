@@ -22,6 +22,9 @@ contract EvmSide is Bridge {
     // all evm tokens that have been pegged on core space
     EnumerableSet.AddressSet private _originTokens;
 
+    // token => cfx operator, all approved cfx operators by NFT admin to register/unregister token pair.
+    mapping(address => address) public approvedOperators;
+
     // emitted when user lock tokens for core space users to operate in advance
     event TokenLocked(
         address indexed evmToken,
@@ -83,6 +86,22 @@ contract EvmSide is Bridge {
      */
     function deploy(uint256 nftType, string memory name, string memory symbol) public onlyCfxSide returns (address) {
         return _deployPeggedToken(nftType, name, symbol, bytes20(0));
+    }
+
+    /**
+     * @dev Check if the specified `evmToken` is valid to be registered as a pegged token on eSpace.
+     */
+    function registerEvm(address evmToken) public onlyCfxSide onlyPeggable(evmToken) {
+        require(!_originTokens.contains(evmToken), "cycle pegged");
+        require(_peggedTokens.add(evmToken), "registered already");
+    }
+
+    /**
+     * @dev Remove token pair if `evmToken` is empty.
+     */
+    function unregisterEvm(address evmToken) public onlyCfxSide {
+        require(PeggedNFTUtil.totalSupply(evmToken) == 0, "evm token has tokens");
+        require(_peggedTokens.remove(evmToken), "already unregistered");
     }
 
     /**
@@ -160,13 +179,43 @@ contract EvmSide is Bridge {
         onlyCfxSide onlyPeggable(evmToken)
         returns (uint256 nftType, string memory name, string memory symbol)
     {
-        _originTokens.add(evmToken);
+        require(_originTokens.add(evmToken), "deployed already");
 
         return (
             PeggedNFTUtil.nftType(evmToken),
             IERC721Metadata(evmToken).name(),
             IERC721Metadata(evmToken).symbol()
         );
+    }
+
+    /**
+     * @dev Owner or admin of `evmToken` approves the `cfxOperator` to register/unregister token pair on core space.
+     */
+    function approve(address evmToken, address cfxOperator) public {
+        require(PeggedNFTUtil.isOwnerOrAdmin(evmToken, msg.sender), "owner or admin required");
+        approvedOperators[evmToken] = cfxOperator;
+    }
+
+    /**
+     * @dev Check if the specified `evmToken` is valid to be registered as origin token on eSpace.
+     */
+    function registerCfx(address evmToken, address cfxOperator) public onlyCfxSide onlyPeggable(evmToken) {
+        require(approvedOperators[evmToken] == cfxOperator, "cfx operator not approved");
+
+        // pegged token may already been deployed on core spce
+        _originTokens.add(evmToken);
+    }
+
+    /**
+     * @dev Remove token pair by approved `cfxOperator` if `evmToken` is empty.
+     */
+    function unregisterCfx(address evmToken, address cfxOperator, bool removed) public onlyCfxSide {
+        require(approvedOperators[evmToken] == cfxOperator, "cfx operator not approved");
+
+        // remove if both deployed and registered pegged token removed on core space
+        if (removed) {
+            _originTokens.remove(evmToken);
+        }
     }
 
     /**

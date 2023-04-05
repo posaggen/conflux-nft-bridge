@@ -9,6 +9,7 @@ import "@openzeppelin/contracts/token/ERC721/extensions/IERC721Metadata.sol";
 import "@openzeppelin/contracts/token/ERC721/extensions/IERC721Enumerable.sol";
 import "@openzeppelin/contracts/utils/introspection/IERC165.sol";
 import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
+import "@openzeppelin/contracts/utils/math/Math.sol";
 import "@confluxfans/contracts/token/CRC1155/extensions/ICRC1155Metadata.sol";
 import "@confluxfans/contracts/token/CRC1155/extensions/ICRC1155Enumerable.sol";
 
@@ -18,6 +19,7 @@ import "@confluxfans/contracts/token/CRC1155/extensions/ICRC1155Enumerable.sol";
 abstract contract PeggedTokenDeployer is Ownable {
     using Address for address;
     using EnumerableSet for EnumerableSet.AddressSet;
+    using Math for uint256;
 
     event ContractCreated(
         address indexed token,
@@ -37,6 +39,27 @@ abstract contract PeggedTokenDeployer is Ownable {
         beacons[PeggedNFTUtil.NFT_TYPE_ERC1155] = beacon1155;
 
         _transferOwnership(msg.sender);
+    }
+
+    function _pagedTokens(EnumerableSet.AddressSet storage all, uint256 offset, uint256 limit) internal view returns (uint256 total, address[] memory tokens) {
+        total = all.length();
+        if (offset >= total) {
+            return (total, new address[](0));
+        }
+
+        uint256 endExclusive = total.min(offset + limit);
+        tokens = new address[](endExclusive - offset);
+
+        for (uint256 i = offset; i < endExclusive; i++) {
+            tokens[i - offset] = all.at(i);
+        }
+    }
+
+    /**
+     * @dev Get pegged tokens in paging view.
+     */
+    function peggedTokens(uint256 offset, uint256 limit) public view returns (uint256 total, address[] memory tokens) {
+        return _pagedTokens(_peggedTokens, offset, limit);
     }
 
     modifier onlyPeggable(address originToken) {
