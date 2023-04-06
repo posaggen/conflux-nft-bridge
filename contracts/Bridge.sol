@@ -1,18 +1,12 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-import "./Initializable.sol";
-import "./PeggedTokenDeployer.sol";
+import "./PeggedNFTUtil.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
 import "@openzeppelin/contracts/token/ERC1155/utils/ERC1155Holder.sol";
 
-abstract contract Bridge is Initializable, PeggedTokenDeployer, IERC721Receiver, ERC1155Holder {
-
-    function _initialize(address beacon721, address beacon1155) internal override {
-        Initializable._initialize();
-        super._initialize(beacon721, beacon1155);
-    }
+abstract contract Bridge is IERC721Receiver, ERC1155Holder {
 
     function _onNFTReceived(
         address nft,
