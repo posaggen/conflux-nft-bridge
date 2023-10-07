@@ -8,14 +8,9 @@ import "@confluxfans/contracts/token/CRC1155/extensions/CRC1155Metadata.sol";
 import "@confluxfans/contracts/token/CRC1155/extensions/CRC1155Enumerable.sol";
 
 contract TestERC721 is ERC721Enumerable, Ownable {
-
     string public placeholderURI;
 
-    constructor(
-        string memory name,
-        string memory symbol,
-        string memory placeholderURI_
-    ) ERC721(name, symbol) {
+    constructor(string memory name, string memory symbol, string memory placeholderURI_) ERC721(name, symbol) {
         placeholderURI = placeholderURI_;
     }
 
@@ -32,17 +27,14 @@ contract TestERC721 is ERC721Enumerable, Ownable {
             _safeMint(to, tokenIds[i]);
         }
     }
-
 }
 
 contract TestERC1155 is CRC1155Metadata, CRC1155Enumerable, Ownable {
-
     constructor(
         string memory name,
         string memory symbol,
         string memory uri
-    ) ERC1155(uri) CRC1155Metadata(name, symbol) {
-    }
+    ) ERC1155(uri) CRC1155Metadata(name, symbol) {}
 
     function setURI(string memory uri) public onlyOwner {
         _setURI(uri);
@@ -53,16 +45,15 @@ contract TestERC1155 is CRC1155Metadata, CRC1155Enumerable, Ownable {
         _mintBatch(to, ids, amounts, "");
     }
 
-    function supportsInterface(bytes4 interfaceId) public view virtual override(CRC1155Enumerable, IERC165) returns (bool) {
+    function supportsInterface(
+        bytes4 interfaceId
+    ) public view virtual override(CRC1155Enumerable, IERC165) returns (bool) {
         return interfaceId == type(ICRC1155Metadata).interfaceId || super.supportsInterface(interfaceId);
     }
-
 }
 
 contract TestERC20 is ERC20, Ownable {
-
-    constructor(string memory name, string memory symbol) ERC20(name, symbol) {
-    }
+    constructor(string memory name, string memory symbol) ERC20(name, symbol) {}
 
     function mint(address to, uint256 amount) external {
         _mint(to, amount);
@@ -71,28 +62,18 @@ contract TestERC20 is ERC20, Ownable {
     function burn(uint256 amount) external {
         _burn(msg.sender, amount);
     }
-
 }
 
 contract TestTokenFactory {
-
     event Created(address indexed token, uint256 eip);
 
-    function deploy721(
-        string memory name,
-        string memory symbol,
-        string memory placeholderURI
-    ) public {
+    function deploy721(string memory name, string memory symbol, string memory placeholderURI) public {
         TestERC721 token = new TestERC721(name, symbol, placeholderURI);
         token.transferOwnership(msg.sender);
         emit Created(address(token), 721);
     }
 
-    function deploy1155(
-        string memory name,
-        string memory symbol,
-        string memory uri
-    ) public {
+    function deploy1155(string memory name, string memory symbol, string memory uri) public {
         TestERC1155 token = new TestERC1155(name, symbol, uri);
         token.transferOwnership(msg.sender);
         emit Created(address(token), 1155);
@@ -103,5 +84,4 @@ contract TestTokenFactory {
         token.transferOwnership(msg.sender);
         emit Created(address(token), 20);
     }
-
 }

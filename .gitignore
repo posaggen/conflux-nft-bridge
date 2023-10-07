@@ -1,4 +1,14 @@
+.env
+.DS_Store
+.openzeppelin
+.idea
+build
 node_modules
+deployments
+coverage
+coverage.json
+typechain-types
+abis
 artifacts
 cache
 flatten

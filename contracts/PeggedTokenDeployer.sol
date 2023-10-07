@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-import "./PeggedNFTUtil.sol";
+import "./utils/PeggedNFTUtil.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/proxy/beacon/BeaconProxy.sol";
 import "@openzeppelin/contracts/proxy/beacon/UpgradeableBeacon.sol";
@@ -21,12 +21,7 @@ abstract contract PeggedTokenDeployer is Ownable {
     using EnumerableSet for EnumerableSet.AddressSet;
     using Math for uint256;
 
-    event ContractCreated(
-        address indexed token,
-        uint256 indexed nftType,
-        string name,
-        string symbol
-    );
+    event ContractCreated(address indexed token, uint256 indexed nftType, string name, string symbol);
 
     // beacon for pegged tokens
     mapping(uint256 => address) public beacons;
@@ -41,7 +36,11 @@ abstract contract PeggedTokenDeployer is Ownable {
         _transferOwnership(msg.sender);
     }
 
-    function _pagedTokens(EnumerableSet.AddressSet storage all, uint256 offset, uint256 limit) internal view returns (uint256 total, address[] memory tokens) {
+    function _pagedTokens(
+        EnumerableSet.AddressSet storage all,
+        uint256 offset,
+        uint256 limit
+    ) internal view returns (uint256 total, address[] memory tokens) {
         total = all.length();
         if (offset >= total) {
             return (total, new address[](0));
@@ -70,13 +69,25 @@ abstract contract PeggedTokenDeployer is Ownable {
 
         // requires necessary metadata and enumerable interfaces
         if (IERC165(originToken).supportsInterface(type(IERC721).interfaceId)) {
-            require(IERC165(originToken).supportsInterface(type(IERC721Metadata).interfaceId), "IERC721Metadata required");
-            require(IERC165(originToken).supportsInterface(type(IERC721Enumerable).interfaceId), "IERC721Enumerable required");
+            require(
+                IERC165(originToken).supportsInterface(type(IERC721Metadata).interfaceId),
+                "IERC721Metadata required"
+            );
+            require(
+                IERC165(originToken).supportsInterface(type(IERC721Enumerable).interfaceId),
+                "IERC721Enumerable required"
+            );
         } else {
             require(IERC165(originToken).supportsInterface(type(IERC1155).interfaceId), "IERC721 or IERC1155 required");
 
-            require(IERC165(originToken).supportsInterface(type(ICRC1155Metadata).interfaceId), "ICRC1155Metadata required");
-            require(IERC165(originToken).supportsInterface(type(ICRC1155Enumerable).interfaceId), "ICRC1155Enumerable required");
+            require(
+                IERC165(originToken).supportsInterface(type(ICRC1155Metadata).interfaceId),
+                "ICRC1155Metadata required"
+            );
+            require(
+                IERC165(originToken).supportsInterface(type(ICRC1155Enumerable).interfaceId),
+                "ICRC1155Enumerable required"
+            );
         }
 
         _;
@@ -104,5 +115,4 @@ abstract contract PeggedTokenDeployer is Ownable {
 
         return token;
     }
-
 }

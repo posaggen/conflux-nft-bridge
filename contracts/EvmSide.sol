@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-import "./Initializable.sol";
 import "./Bridge.sol";
 import "./PeggedTokenDeployer.sol";
+import "./utils/Initializable.sol";
 import "@openzeppelin/contracts/token/ERC721/extensions/IERC721Metadata.sol";
 import "@openzeppelin/contracts/utils/structs/EnumerableMap.sol";
 import "@openzeppelin/contracts/utils/math/Math.sol";
@@ -39,8 +39,7 @@ contract EvmSide is Initializable, Bridge, PeggedTokenDeployer {
         uint256[] values
     );
 
-    function initialize(address beacon721, address beacon1155) public {
-        Initializable._initialize();
+    function initialize(address beacon721, address beacon1155) public onlyInitializeOnce {
         PeggedTokenDeployer._initialize(beacon721, beacon1155);
     }
 
@@ -102,7 +101,11 @@ contract EvmSide is Initializable, Bridge, PeggedTokenDeployer {
      * @dev Create a NFT contract with beacon proxy on eSpace. This is called by core space
      * via cross space internal contract.
      */
-    function deploy(uint256 nftType, string memory name, string memory symbol) public onlyCfxRegistry returns (address) {
+    function deploy(
+        uint256 nftType,
+        string memory name,
+        string memory symbol
+    ) public onlyCfxRegistry returns (address) {
         return _deployPeggedToken(nftType, name, symbol, bytes20(0));
     }
 
@@ -192,18 +195,17 @@ contract EvmSide is Initializable, Bridge, PeggedTokenDeployer {
     /**
      * @dev Check if the specified `evmToken` is valid to create pegged NFT contract on core space.
      */
-    function preDeployCfx(address evmToken)
+    function preDeployCfx(
+        address evmToken
+    )
         public
-        onlyCfxRegistry onlyPeggable(evmToken)
+        onlyCfxRegistry
+        onlyPeggable(evmToken)
         returns (uint256 nftType, string memory name, string memory symbol)
     {
         require(_originTokens.add(evmToken), "deployed already");
 
-        return (
-            PeggedNFTUtil.nftType(evmToken),
-            IERC721Metadata(evmToken).name(),
-            IERC721Metadata(evmToken).symbol()
-        );
+        return (PeggedNFTUtil.nftType(evmToken), IERC721Metadata(evmToken).name(), IERC721Metadata(evmToken).symbol());
     }
 
     /**
@@ -237,7 +239,7 @@ contract EvmSide is Initializable, Bridge, PeggedTokenDeployer {
     }
 
     /**
-     * @dev Unlock tokens by cfx side, when user cross NFT from eSpace to core space (pegged). 
+     * @dev Unlock tokens by cfx side, when user cross NFT from eSpace to core space (pegged).
      */
     function unlock(
         address evmToken,
@@ -251,13 +253,7 @@ contract EvmSide is Initializable, Bridge, PeggedTokenDeployer {
     /**
      * @dev Transfer tokens by cfx side, when user withdraw NFT from core space (pegged) back to eSpace (origin).
      */
-    function transfer(
-        address evmToken,
-        address to,
-        uint256[] memory ids,
-        uint256[] memory amounts
-    ) public onlyCfxSide {
+    function transfer(address evmToken, address to, uint256[] memory ids, uint256[] memory amounts) public onlyCfxSide {
         PeggedNFTUtil.batchTransfer(evmToken, to, ids, amounts);
     }
-
 }

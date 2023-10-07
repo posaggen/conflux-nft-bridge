@@ -1,20 +1,19 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-import "./PeggedNFTUtil.sol";
+import "./utils/PeggedNFTUtil.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
 import "@openzeppelin/contracts/token/ERC1155/utils/ERC1155Holder.sol";
 
 abstract contract Bridge is IERC721Receiver, ERC1155Holder {
-
     function _onNFTReceived(
         address nft,
         address operator,
         address from,
-        uint256[] memory ids,       // one id for ERC721
-        uint256[] memory amounts,   // 1 for ERC721
-        address to                  // to address on opposite space
+        uint256[] memory ids, // one id for ERC721
+        uint256[] memory amounts, // 1 for ERC721
+        address to // to address on opposite space
     ) internal virtual;
 
     /**
@@ -106,5 +105,4 @@ abstract contract Bridge is IERC721Receiver, ERC1155Holder {
         array[0] = element;
         return array;
     }
-
 }

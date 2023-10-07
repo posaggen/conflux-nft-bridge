@@ -18,8 +18,7 @@ contract PeggedERC1155 is
     ERC1155URIStorage,
     ICRC1155Metadata
 {
-    constructor() ERC1155("") {
-    }
+    constructor() ERC1155("") {}
 
     function name() public view override returns (string memory) {
         return _name_;
@@ -54,19 +53,16 @@ contract PeggedERC1155 is
         }
     }
 
-    function uri(uint256 tokenId)
-        public
-        view
-        virtual
-        override(ERC1155, ERC1155URIStorage, IERC1155MetadataURI)
-        returns (string memory)
-    {
+    function uri(
+        uint256 tokenId
+    ) public view virtual override(ERC1155, ERC1155URIStorage, IERC1155MetadataURI) returns (string memory) {
         if (evmSide == bytes20(0)) {
             return ERC1155URIStorage.uri(tokenId);
         }
 
         // read token URI from eSpace for pegged token on core space
-        bytes memory result = InternalContracts.CROSS_SPACE_CALL.staticCallEVM(evmSide,
+        bytes memory result = InternalContracts.CROSS_SPACE_CALL.staticCallEVM(
+            evmSide,
             abi.encodeWithSelector(IERC1155MetadataURI.uri.selector, tokenId)
         );
 
@@ -80,17 +76,11 @@ contract PeggedERC1155 is
         uint256[] memory ids,
         uint256[] memory amounts,
         bytes memory data
-    ) internal virtual override(CRC1155Enumerable, ERC1155, ERC1155Pausable) {
+    ) internal virtual override(CRC1155Enumerable, ERC1155, ERC1155Pausable) {}
 
-    }
-
-    function supportsInterface(bytes4 interfaceId)
-        public
-        view
-        virtual
-        override(AccessControlEnumerable, CRC1155Enumerable, ERC1155, IERC165)
-        returns (bool)
-    {
+    function supportsInterface(
+        bytes4 interfaceId
+    ) public view virtual override(AccessControlEnumerable, CRC1155Enumerable, ERC1155, IERC165) returns (bool) {
         return interfaceId == type(ICRC1155Metadata).interfaceId || super.supportsInterface(interfaceId);
     }
 }

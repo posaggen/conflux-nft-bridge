@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-import "./Initializable.sol";
 import "./EvmSide.sol";
 import "./PeggedTokenDeployer.sol";
+import "./utils/Initializable.sol";
 import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 import "@confluxfans/contracts/InternalContracts/InternalContractsHandler.sol";
 import "@confluxfans/contracts/InternalContracts/InternalContractsLib.sol";
@@ -37,15 +37,11 @@ contract Registry is Initializable, PeggedTokenDeployer, InternalContractsHandle
     // cfx token => evm token (pegged on core space)
     mapping(address => bytes20) public peggedCore2EvmTokens;
 
-    function initialize(bytes20 evmSide_) public {
-        Initializable._initialize();
-
+    function initialize(bytes20 evmSide_) public onlyInitializeOnce {
         evmSide = evmSide_;
 
         // connect to evm side
-        InternalContracts.CROSS_SPACE_CALL.callEVM(evmSide,
-            abi.encodeWithSelector(EvmSide.setCfxRegistry.selector)
-        );
+        InternalContracts.CROSS_SPACE_CALL.callEVM(evmSide, abi.encodeWithSelector(EvmSide.setCfxRegistry.selector));
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -73,7 +69,11 @@ contract Registry is Initializable, PeggedTokenDeployer, InternalContractsHandle
     /**
      * @dev Deploy NFT contract on eSpace for specified `cfxToken` with `name` and `symbol` by owner only.
      */
-    function deployEvmByAdmin(address cfxToken, string memory name, string memory symbol) public onlyPeggable(cfxToken) onlyOwner {
+    function deployEvmByAdmin(
+        address cfxToken,
+        string memory name,
+        string memory symbol
+    ) public onlyPeggable(cfxToken) onlyOwner {
         _deployEvm(cfxToken, name, symbol);
     }
 
@@ -84,7 +84,8 @@ contract Registry is Initializable, PeggedTokenDeployer, InternalContractsHandle
         uint256 nftType = PeggedNFTUtil.nftType(cfxToken);
 
         // deply on eSpace via cross space internal contract
-        bytes memory result = InternalContracts.CROSS_SPACE_CALL.callEVM(evmSide,
+        bytes memory result = InternalContracts.CROSS_SPACE_CALL.callEVM(
+            evmSide,
             abi.encodeWithSelector(EvmSide.deploy.selector, nftType, name, symbol)
         );
 
@@ -106,7 +107,8 @@ contract Registry is Initializable, PeggedTokenDeployer, InternalContractsHandle
         require(PeggedNFTUtil.isOwnerOrAdmin(cfxToken, msg.sender), "owner or admin required");
 
         // ensure `evmToken` is valid to be a pegged token on eSpace
-        InternalContracts.CROSS_SPACE_CALL.callEVM(evmSide,
+        InternalContracts.CROSS_SPACE_CALL.callEVM(
+            evmSide,
             abi.encodeWithSelector(EvmSide.registerEvm.selector, address(evmToken))
         );
 
@@ -125,7 +127,8 @@ contract Registry is Initializable, PeggedTokenDeployer, InternalContractsHandle
         require(PeggedNFTUtil.isOwnerOrAdmin(cfxToken, msg.sender), "owner or admin required");
 
         // ensure `evmToken` is vlaid to unregister on eSpace
-        InternalContracts.CROSS_SPACE_CALL.callEVM(evmSide,
+        InternalContracts.CROSS_SPACE_CALL.callEVM(
+            evmSide,
             abi.encodeWithSelector(EvmSide.unregisterEvm.selector, address(evmToken))
         );
 
@@ -161,14 +164,15 @@ contract Registry is Initializable, PeggedTokenDeployer, InternalContractsHandle
      * @dev Deploy NFT contract on core space for specified `evmToken` with `name` and `symbol` by owner only.
      */
     function deployCfxByAdmin(bytes20 evmToken, string memory name, string memory symbol) public onlyOwner {
-       _deployCfx(evmToken, name, symbol);
+        _deployCfx(evmToken, name, symbol);
     }
 
     function _deployCfx(bytes20 evmToken, string memory name, string memory symbol) private {
         require(evm2CoreTokens[evmToken] == address(0), "deployed already");
         require(registeredEvm2CoreTokens[evmToken] == address(0), "registered already");
 
-        bytes memory result = InternalContracts.CROSS_SPACE_CALL.callEVM(evmSide,
+        bytes memory result = InternalContracts.CROSS_SPACE_CALL.callEVM(
+            evmSide,
             abi.encodeWithSelector(EvmSide.preDeployCfx.selector, address(evmToken))
         );
 
@@ -196,7 +200,8 @@ contract Registry is Initializable, PeggedTokenDeployer, InternalContractsHandle
         require(registeredEvm2CoreTokens[evmToken] == address(0), "registered already");
         require(!_allCfxTokens.contains(cfxToken), "cycle pegged");
 
-        InternalContracts.CROSS_SPACE_CALL.callEVM(evmSide,
+        InternalContracts.CROSS_SPACE_CALL.callEVM(
+            evmSide,
             abi.encodeWithSelector(EvmSide.registerCfx.selector, address(evmToken), msg.sender)
         );
 
@@ -218,7 +223,8 @@ contract Registry is Initializable, PeggedTokenDeployer, InternalContractsHandle
         address registered = registeredEvm2CoreTokens[evmToken];
 
         bool removed = deployed == address(0) || registered == address(0);
-        InternalContracts.CROSS_SPACE_CALL.callEVM(evmSide,
+        InternalContracts.CROSS_SPACE_CALL.callEVM(
+            evmSide,
             abi.encodeWithSelector(EvmSide.unregisterCfx.selector, address(evmToken), msg.sender, removed)
         );
 
@@ -233,5 +239,4 @@ contract Registry is Initializable, PeggedTokenDeployer, InternalContractsHandle
         delete peggedCore2EvmTokens[cfxToken];
         require(_peggedTokens.remove(cfxToken), "already removed");
     }
-
 }

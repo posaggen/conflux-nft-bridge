@@ -14,7 +14,6 @@ import "@openzeppelin/contracts/token/ERC1155/extensions/IERC1155MetadataURI.sol
 import "@confluxfans/contracts/token/CRC1155/extensions/ICRC1155Enumerable.sol";
 
 library PeggedNFTUtil {
-
     uint256 public constant NFT_TYPE_ERC721 = 721;
     uint256 public constant NFT_TYPE_ERC1155 = 1155;
 
@@ -60,7 +59,13 @@ library PeggedNFTUtil {
         return ICRC1155Enumerable(token).totalSupply();
     }
 
-    function batchMint(address token, address to, uint256[] memory ids, uint256[] memory amounts, string[] memory uris) internal {
+    function batchMint(
+        address token,
+        address to,
+        uint256[] memory ids,
+        uint256[] memory amounts,
+        string[] memory uris
+    ) internal {
         if (nftType(token) == NFT_TYPE_ERC721) {
             for (uint256 i = 0; i < ids.length; i++) {
                 require(amounts[i] == 1, "invalid amount for ERC721");
@@ -98,5 +103,4 @@ library PeggedNFTUtil {
             IERC1155(token).safeBatchTransferFrom(address(this), to, ids, amounts, "");
         }
     }
-
 }

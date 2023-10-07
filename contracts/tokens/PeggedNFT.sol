@@ -1,18 +1,12 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-import "./Initializable.sol";
+import "../utils/Initializable.sol";
 import "@openzeppelin/contracts/access/AccessControlEnumerable.sol";
 import "@openzeppelin/contracts/security/Pausable.sol";
 import "@confluxfans/contracts/InternalContracts/InternalContractsHandler.sol";
 
-abstract contract PeggedNFT is
-    Initializable,
-    AccessControlEnumerable,
-    Pausable,
-    InternalContractsHandler
-{
-
+abstract contract PeggedNFT is Initializable, AccessControlEnumerable, Pausable, InternalContractsHandler {
     bytes32 public constant PAUSER_ROLE = keccak256("PAUSER_ROLE");
     bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
 
@@ -24,9 +18,12 @@ abstract contract PeggedNFT is
     bytes20 public evmSide;
 
     // to support deployment behind a proxy
-    function initialize(string memory name_, string memory symbol_, bytes20 evmSide_, address admin) public virtual {
-        Initializable._initialize();
-
+    function initialize(
+        string memory name_,
+        string memory symbol_,
+        bytes20 evmSide_,
+        address admin
+    ) public virtual onlyInitializeOnce {
         _name_ = name_;
         _symbol_ = symbol_;
 
@@ -51,5 +48,4 @@ abstract contract PeggedNFT is
 
         super.grantRole(role, account);
     }
-
 }

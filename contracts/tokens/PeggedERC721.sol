@@ -14,15 +14,8 @@ import "@confluxfans/contracts/InternalContracts/InternalContractsLib.sol";
 /**
  * @dev Pegged NFT contracts that deployed on core space or eSpace via beacon proxy.
  */
-contract PeggedERC721 is
-    PeggedNFT,
-    ERC721Enumerable,
-    ERC721Burnable,
-    ERC721Pausable,
-    ERC721URIStorage
-{
-    constructor() ERC721("", "") {
-    }
+contract PeggedERC721 is PeggedNFT, ERC721Enumerable, ERC721Burnable, ERC721Pausable, ERC721URIStorage {
+    constructor() ERC721("", "") {}
 
     function name() public view override returns (string memory) {
         return _name_;
@@ -49,7 +42,8 @@ contract PeggedERC721 is
         }
 
         // read token URI from eSpace for pegged token on core space
-        bytes memory result = InternalContracts.CROSS_SPACE_CALL.staticCallEVM(evmSide,
+        bytes memory result = InternalContracts.CROSS_SPACE_CALL.staticCallEVM(
+            evmSide,
             abi.encodeWithSelector(IERC721Metadata.tokenURI.selector, tokenId)
         );
 
@@ -65,18 +59,13 @@ contract PeggedERC721 is
         super._beforeTokenTransfer(from, to, firstTokenId, batchSize);
     }
 
-    function supportsInterface(bytes4 interfaceId)
-        public
-        view
-        virtual
-        override(AccessControlEnumerable, ERC721, ERC721Enumerable)
-        returns (bool)
-    {
+    function supportsInterface(
+        bytes4 interfaceId
+    ) public view virtual override(AccessControlEnumerable, ERC721, ERC721Enumerable) returns (bool) {
         return super.supportsInterface(interfaceId);
     }
 
     function _burn(uint256 tokenId) internal virtual override(ERC721, ERC721URIStorage) {
         super._burn(tokenId);
     }
-
 }

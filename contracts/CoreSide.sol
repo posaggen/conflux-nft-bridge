@@ -1,16 +1,15 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-import "./Initializable.sol";
 import "./Bridge.sol";
 import "./EvmSide.sol";
-import "./PeggedNFTUtil.sol";
 import "./Registry.sol";
+import "./utils/Initializable.sol";
+import "./utils/PeggedNFTUtil.sol";
 import "@confluxfans/contracts/InternalContracts/InternalContractsHandler.sol";
 import "@confluxfans/contracts/InternalContracts/InternalContractsLib.sol";
 
 contract CoreSide is Initializable, Bridge, InternalContractsHandler {
-
     // interact via cross space internal contract
     bytes20 public evmSide;
 
@@ -59,26 +58,22 @@ contract CoreSide is Initializable, Bridge, InternalContractsHandler {
         uint256[] amounts
     );
 
-    function initialize(Registry registry_, bytes20 evmSide_) public {
-        Initializable._initialize();
-
+    function initialize(Registry registry_, bytes20 evmSide_) public onlyInitializeOnce {
         registry = registry_;
         evmSide = evmSide_;
 
         // connect to evm side
-        InternalContracts.CROSS_SPACE_CALL.callEVM(evmSide,
-            abi.encodeWithSelector(EvmSide.setCfxSide.selector)
-        );
+        InternalContracts.CROSS_SPACE_CALL.callEVM(evmSide, abi.encodeWithSelector(EvmSide.setCfxSide.selector));
     }
 
     // NFT receiver callback handler.
     function _onNFTReceived(
         address nft,
-        address operator,           // cfx operator
-        address from,               // cfx from
+        address operator, // cfx operator
+        address from, // cfx from
         uint256[] memory ids,
         uint256[] memory amounts,
-        address to                  // evm to
+        address to // evm to
     ) internal override {
         // cross origin token from core space to the registered pegged token on eSpace with priority
         bytes20 registered = registry.registeredCore2EvmTokens(nft);
@@ -123,7 +118,8 @@ contract CoreSide is Initializable, Bridge, InternalContractsHandler {
         }
 
         // mint on eSpace via cross space internal contract
-        InternalContracts.CROSS_SPACE_CALL.callEVM(evmSide,
+        InternalContracts.CROSS_SPACE_CALL.callEVM(
+            evmSide,
             abi.encodeWithSelector(EvmSide.mint.selector, address(evmToken), evmAccount, ids, amounts, uris)
         );
 
@@ -145,7 +141,8 @@ contract CoreSide is Initializable, Bridge, InternalContractsHandler {
         require(cfxToken != address(0), "invalid pegged evm token");
 
         // burn on eSpace via cross space internal contract
-        InternalContracts.CROSS_SPACE_CALL.callEVM(evmSide,
+        InternalContracts.CROSS_SPACE_CALL.callEVM(
+            evmSide,
             abi.encodeWithSelector(EvmSide.burn.selector, address(evmToken), msg.sender, ids, amounts)
         );
 
@@ -163,18 +160,14 @@ contract CoreSide is Initializable, Bridge, InternalContractsHandler {
     /**
      * @dev Cross locked NFT from eSpace to core space as pegged.
      */
-    function crossFromEvm(
-        address cfxToken,
-        uint256[] memory ids,
-        uint256[] memory amounts,
-        address recipient
-    ) public {
+    function crossFromEvm(address cfxToken, uint256[] memory ids, uint256[] memory amounts, address recipient) public {
         require(ids.length == amounts.length, "ids and amounts length mismatch");
 
         bytes20 evmToken = registry.peggedCore2EvmTokens(cfxToken);
         require(evmToken != bytes20(0), "cfx token unsupported");
 
-        InternalContracts.CROSS_SPACE_CALL.callEVM(evmSide,
+        InternalContracts.CROSS_SPACE_CALL.callEVM(
+            evmSide,
             abi.encodeWithSelector(EvmSide.unlock.selector, address(evmToken), msg.sender, ids, amounts)
         );
 
@@ -200,11 +193,11 @@ contract CoreSide is Initializable, Bridge, InternalContractsHandler {
 
         PeggedNFTUtil.batchBurn(cfxToken, ids, amounts);
 
-        InternalContracts.CROSS_SPACE_CALL.callEVM(evmSide,
+        InternalContracts.CROSS_SPACE_CALL.callEVM(
+            evmSide,
             abi.encodeWithSelector(EvmSide.transfer.selector, address(evmToken), evmAccount, ids, amounts)
         );
-        
+
         emit WithdrawToEvm(cfxToken, evmToken, operator, from, bytes20(evmAccount), ids, amounts);
     }
-
 }
