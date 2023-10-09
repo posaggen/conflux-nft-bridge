@@ -63,7 +63,7 @@ contract CoreRegistry is ICoreRegistry, Initializable, PeggedTokenDeployer, Upgr
     //
     ////////////////////////////////////////////////////////////////////////////////////////////////////
 
-    function _isCfxOwnerOrAdmin(address cfxToken, address account) internal returns (bool) {
+    function _isCfxOwnerOrAdmin(address cfxToken, address account) internal view returns (bool) {
         return PeggedNFTUtil.isOwnerOrAdmin(cfxToken, msg.sender) || account == owner();
     }
 
