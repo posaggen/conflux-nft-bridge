@@ -16,6 +16,7 @@
         "reason-string": "off",
         "no-empty-blocks": "off",
         "avoid-low-level-calls": "off",
-        "max-states-count": "off"
+        "max-states-count": "off",
+        "custom-errors": "off"
     }
 }

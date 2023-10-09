@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-import "./PeggedERC721.sol";
-import "./PeggedERC1155.sol";
+import "../tokens/PeggedERC721.sol";
+import "../tokens/PeggedERC1155.sol";
 import "@openzeppelin/contracts/access/IAccessControl.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/introspection/IERC165.sol";
@@ -23,7 +23,7 @@ library PeggedNFTUtil {
         }
 
         // only ERC721 and ERC1155 supported
-        require(IERC165(token).supportsInterface(type(IERC1155).interfaceId), "unsupported NFT type");
+        require(IERC165(token).supportsInterface(type(IERC1155).interfaceId), "PeggedNFTUtil: unsupported NFT type");
 
         return NFT_TYPE_ERC1155;
     }
@@ -68,7 +68,7 @@ library PeggedNFTUtil {
     ) internal {
         if (nftType(token) == NFT_TYPE_ERC721) {
             for (uint256 i = 0; i < ids.length; i++) {
-                require(amounts[i] == 1, "invalid amount for ERC721");
+                require(amounts[i] == 1, "PeggedNFTUtil: invalid amount for ERC721");
                 PeggedERC721(token).mint(to, ids[i], uris[i]);
             }
         } else if (ids.length == 1) {
@@ -81,7 +81,7 @@ library PeggedNFTUtil {
     function batchBurn(address token, uint256[] memory ids, uint256[] memory amounts) internal {
         if (nftType(token) == NFT_TYPE_ERC721) {
             for (uint256 i = 0; i < ids.length; i++) {
-                require(amounts[i] == 1, "invalid amount for ERC721");
+                require(amounts[i] == 1, "PeggedNFTUtil: invalid amount for ERC721");
                 PeggedERC721(token).burn(ids[i]);
             }
         } else if (ids.length == 1) {
@@ -94,7 +94,7 @@ library PeggedNFTUtil {
     function batchTransfer(address token, address to, uint256[] memory ids, uint256[] memory amounts) internal {
         if (nftType(token) == NFT_TYPE_ERC721) {
             for (uint256 i = 0; i < ids.length; i++) {
-                require(amounts[i] == 1, "invalid amount for ERC721");
+                require(amounts[i] == 1, "PeggedNFTUtil: invalid amount for ERC721");
                 IERC721(token).safeTransferFrom(address(this), to, ids[i]);
             }
         } else if (ids.length == 1) {

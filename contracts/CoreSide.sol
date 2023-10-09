@@ -2,68 +2,31 @@
 pragma solidity ^0.8.0;
 
 import "./Bridge.sol";
-import "./EvmSide.sol";
-import "./Registry.sol";
 import "./utils/Initializable.sol";
 import "./utils/PeggedNFTUtil.sol";
-import "@confluxfans/contracts/InternalContracts/InternalContractsHandler.sol";
-import "@confluxfans/contracts/InternalContracts/InternalContractsLib.sol";
+import "./utils/UpgradeableInternalContractsHandler.sol";
 
-contract CoreSide is Initializable, Bridge, InternalContractsHandler {
+import "./interfaces/ICoreRegistry.sol";
+import "./interfaces/ICoreSide.sol";
+import "./interfaces/IEvmSide.sol";
+import "./interfaces/ICoreToEvmCallback.sol";
+import "./interfaces/IEvmToCoreCallback.sol";
+
+contract CoreSide is ICoreSide, Initializable, Bridge, UpgradeableInternalContractsHandler {
     // interact via cross space internal contract
     bytes20 public evmSide;
 
     // NFT registry for all token pairs
-    Registry public registry;
+    ICoreRegistry public registry;
 
-    // emitted when cross NFT from core space (origin) to eSpace (pegged)
-    event CrossToEvm(
-        address indexed cfxToken,
-        bytes20 evmToken,
-        address cfxOperator,
-        address indexed cfxFrom,
-        bytes20 indexed evmTo,
-        uint256[] ids,
-        uint256[] amounts
-    );
-
-    // emitted when withdraw NFT from eSpace (pegged) to core space (origin)
-    event WithdrawFromEvm(
-        address indexed cfxToken,
-        bytes20 evmToken,
-        address indexed cfxAccount,
-        address indexed cfxRecipient,
-        uint256[] ids,
-        uint256[] amounts
-    );
-
-    // emitted when cross NFT from eSpace (origin) to core space (pegged)
-    event CrossFromEvm(
-        address indexed cfxToken,
-        bytes20 evmToken,
-        address indexed cfxAccount,
-        address indexed cfxRecipient,
-        uint256[] ids,
-        uint256[] amounts
-    );
-
-    // emitted when withdraw NFT from core space (pegged) to eSpace (origin)
-    event WithdrawToEvm(
-        address indexed cfxToken,
-        bytes20 evmToken,
-        address cfxOperator,
-        address indexed cfxFrom,
-        bytes20 indexed evmTo,
-        uint256[] ids,
-        uint256[] amounts
-    );
-
-    function initialize(Registry registry_, bytes20 evmSide_) public onlyInitializeOnce {
+    function initialize(ICoreRegistry registry_, bytes20 evmSide_) public onlyInitializeOnce {
         registry = registry_;
         evmSide = evmSide_;
 
         // connect to evm side
-        InternalContracts.CROSS_SPACE_CALL.callEVM(evmSide, abi.encodeWithSelector(EvmSide.setCfxSide.selector));
+        InternalContracts.CROSS_SPACE_CALL.callEVM(evmSide, abi.encodeWithSelector(IEvmSide.setCfxSide.selector));
+
+        _setupInternalContracts();
     }
 
     // NFT receiver callback handler.
@@ -90,7 +53,7 @@ contract CoreSide is Initializable, Bridge, InternalContractsHandler {
         }
 
         // withdraw pegged token on core space to eSpace
-        require(registry.peggedCore2EvmTokens(nft) != bytes20(0), "invalid token received");
+        require(registry.peggedCore2EvmTokens(nft) != bytes20(0), "CoreSide: invalid token received");
         _withdrawToEvm(nft, operator, from, ids, amounts, to);
     }
 
@@ -112,16 +75,38 @@ contract CoreSide is Initializable, Bridge, InternalContractsHandler {
         bytes20 evmToken,
         address evmAccount
     ) private {
-        string[] memory uris = new string[](ids.length);
-        for (uint256 i = 0; i < ids.length; i++) {
-            uris[i] = PeggedNFTUtil.tokenURI(cfxToken, ids[i]);
-        }
+        // mint on evm side
+        address callback = registry.core2EvmCallbacks(cfxToken);
+        if (callback == address(0)) {
+            // no callback, use default cross space function
+            string[] memory uris = new string[](ids.length);
+            for (uint256 i = 0; i < ids.length; i++) {
+                uris[i] = PeggedNFTUtil.tokenURI(cfxToken, ids[i]);
+            }
 
-        // mint on eSpace via cross space internal contract
-        InternalContracts.CROSS_SPACE_CALL.callEVM(
-            evmSide,
-            abi.encodeWithSelector(EvmSide.mint.selector, address(evmToken), evmAccount, ids, amounts, uris)
-        );
+            // mint on eSpace via cross space internal contract
+            InternalContracts.CROSS_SPACE_CALL.callEVM(
+                evmSide,
+                abi.encodeWithSelector(IEvmSide.mint.selector, address(evmToken), evmAccount, ids, amounts, uris)
+            );
+        } else {
+            // cross space through callback
+            // NOTE: callback is developed by NFT contract owner, its correctness is not guaranteed.
+            try
+                ICoreToEvmCallback(callback).onCoreToEvm(cfxToken, operator, from, ids, amounts, evmToken, evmAccount)
+            returns (bytes4 retval) {
+                require(retval == ICoreToEvmCallback.onCoreToEvm.selector, "CoreSide: invalid callback return value");
+            } catch (bytes memory reason) {
+                if (reason.length == 0) {
+                    revert("CoreSide: non CoreToEvmCallback implementer");
+                } else {
+                    /// @solidity memory-safe-assembly
+                    assembly {
+                        revert(add(32, reason), mload(reason))
+                    }
+                }
+            }
+        }
 
         emit CrossToEvm(cfxToken, evmToken, operator, from, bytes20(evmAccount), ids, amounts);
     }
@@ -135,17 +120,17 @@ contract CoreSide is Initializable, Bridge, InternalContractsHandler {
         uint256[] memory amounts,
         address recipient
     ) public {
-        require(ids.length == amounts.length, "ids and amounts length mismatch");
+        require(ids.length == amounts.length, "CoreSide: ids and amounts length mismatch");
 
         address cfxToken = registry.peggedEvm2CoreTokens(evmToken);
-        require(cfxToken != address(0), "invalid pegged evm token");
+        require(cfxToken != address(0), "CoreSide: invalid pegged evm token");
 
         // burn on eSpace via cross space internal contract
         InternalContracts.CROSS_SPACE_CALL.callEVM(
             evmSide,
-            abi.encodeWithSelector(EvmSide.burn.selector, address(evmToken), msg.sender, ids, amounts)
+            abi.encodeWithSelector(IEvmSide.burn.selector, address(evmToken), msg.sender, ids, amounts)
         );
-
+        // transfer on core side
         PeggedNFTUtil.batchTransfer(cfxToken, recipient, ids, amounts);
 
         emit WithdrawFromEvm(cfxToken, evmToken, msg.sender, recipient, ids, amounts);
@@ -161,18 +146,39 @@ contract CoreSide is Initializable, Bridge, InternalContractsHandler {
      * @dev Cross locked NFT from eSpace to core space as pegged.
      */
     function crossFromEvm(address cfxToken, uint256[] memory ids, uint256[] memory amounts, address recipient) public {
-        require(ids.length == amounts.length, "ids and amounts length mismatch");
+        require(ids.length == amounts.length, "CoreSide: ids and amounts length mismatch");
 
         bytes20 evmToken = registry.peggedCore2EvmTokens(cfxToken);
-        require(evmToken != bytes20(0), "cfx token unsupported");
-
+        require(evmToken != bytes20(0), "CoreSide: cfx token unsupported");
+        // unlock on evm side
         InternalContracts.CROSS_SPACE_CALL.callEVM(
             evmSide,
-            abi.encodeWithSelector(EvmSide.unlock.selector, address(evmToken), msg.sender, ids, amounts)
+            abi.encodeWithSelector(IEvmSide.unlock.selector, address(evmToken), msg.sender, ids, amounts)
         );
-
-        // pegged NFT on core space do not require uri, instead, read from eSpace directly.
-        PeggedNFTUtil.batchMint(cfxToken, recipient, ids, amounts, new string[](ids.length));
+        // mint on core side
+        address callback = registry.evm2CoreCallbacks(cfxToken);
+        if (callback == address(0)) {
+            // no callback, use default cross space function
+            // pegged NFT on core space do not require uri, instead, read from eSpace directly.
+            PeggedNFTUtil.batchMint(cfxToken, recipient, ids, amounts, new string[](ids.length));
+        } else {
+            // cross space through callback
+            // NOTE: callback is developed by NFT contract owner, its correctness is not guaranteed.
+            try IEvmToCoreCallback(callback).onEvmToCore(evmToken, cfxToken, ids, amounts, recipient) returns (
+                bytes4 retval
+            ) {
+                require(retval == IEvmToCoreCallback.onEvmToCore.selector, "CoreSide: invalid callback return value");
+            } catch (bytes memory reason) {
+                if (reason.length == 0) {
+                    revert("CoreSide: non EvmToCoreCallback implementer");
+                } else {
+                    /// @solidity memory-safe-assembly
+                    assembly {
+                        revert(add(32, reason), mload(reason))
+                    }
+                }
+            }
+        }
 
         emit CrossFromEvm(cfxToken, evmToken, msg.sender, recipient, ids, amounts);
     }
@@ -189,13 +195,13 @@ contract CoreSide is Initializable, Bridge, InternalContractsHandler {
         address evmAccount
     ) private {
         bytes20 evmToken = registry.peggedCore2EvmTokens(cfxToken);
-        require(evmToken != bytes20(0), "cfx token unsupported");
-
+        require(evmToken != bytes20(0), "CoreSide: cfx token unsupported");
+        // burn on core side
         PeggedNFTUtil.batchBurn(cfxToken, ids, amounts);
-
+        // transfer on evm side
         InternalContracts.CROSS_SPACE_CALL.callEVM(
             evmSide,
-            abi.encodeWithSelector(EvmSide.transfer.selector, address(evmToken), evmAccount, ids, amounts)
+            abi.encodeWithSelector(IEvmSide.transfer.selector, address(evmToken), evmAccount, ids, amounts)
         );
 
         emit WithdrawToEvm(cfxToken, evmToken, operator, from, bytes20(evmAccount), ids, amounts);

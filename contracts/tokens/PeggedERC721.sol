@@ -37,13 +37,13 @@ contract PeggedERC721 is PeggedNFT, ERC721Enumerable, ERC721Burnable, ERC721Paus
     }
 
     function tokenURI(uint256 tokenId) public view virtual override(ERC721, ERC721URIStorage) returns (string memory) {
-        if (evmSide == bytes20(0)) {
+        if (evmSideToken == bytes20(0)) {
             return ERC721URIStorage.tokenURI(tokenId);
         }
 
         // read token URI from eSpace for pegged token on core space
         bytes memory result = InternalContracts.CROSS_SPACE_CALL.staticCallEVM(
-            evmSide,
+            evmSideToken,
             abi.encodeWithSelector(IERC721Metadata.tokenURI.selector, tokenId)
         );
 

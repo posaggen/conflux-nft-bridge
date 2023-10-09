@@ -62,31 +62,26 @@ abstract contract PeggedTokenDeployer is Ownable {
     }
 
     modifier onlyPeggable(address originToken) {
-        require(originToken.isContract(), "token is not contract");
+        require(originToken.isContract(), "PeggedTokenDeployer: token is not contract");
 
         // avoid cycle pegged
-        require(!_peggedTokens.contains(originToken), "cycle pegged");
+        require(!_peggedTokens.contains(originToken), "PeggedTokenDeployer: cycle pegged");
 
         // requires necessary metadata and enumerable interfaces
         if (IERC165(originToken).supportsInterface(type(IERC721).interfaceId)) {
             require(
                 IERC165(originToken).supportsInterface(type(IERC721Metadata).interfaceId),
-                "IERC721Metadata required"
-            );
-            require(
-                IERC165(originToken).supportsInterface(type(IERC721Enumerable).interfaceId),
-                "IERC721Enumerable required"
+                "PeggedTokenDeployer: IERC721Metadata required"
             );
         } else {
-            require(IERC165(originToken).supportsInterface(type(IERC1155).interfaceId), "IERC721 or IERC1155 required");
+            require(
+                IERC165(originToken).supportsInterface(type(IERC1155).interfaceId),
+                "PeggedTokenDeployer: IERC721 or IERC1155 required"
+            );
 
             require(
                 IERC165(originToken).supportsInterface(type(ICRC1155Metadata).interfaceId),
-                "ICRC1155Metadata required"
-            );
-            require(
-                IERC165(originToken).supportsInterface(type(ICRC1155Enumerable).interfaceId),
-                "ICRC1155Enumerable required"
+                "PeggedTokenDeployer: ICRC1155Metadata required"
             );
         }
 
@@ -103,12 +98,12 @@ abstract contract PeggedTokenDeployer is Ownable {
         string memory symbol,
         bytes20 evmOriginToken
     ) internal returns (address) {
-        require(beacons[nftType] != address(0), "beacon uninitialized");
-        require(bytes(name).length > 0, "name required");
-        require(bytes(symbol).length > 0, "symbol required");
+        require(beacons[nftType] != address(0), "PeggedTokenDeployer: beacon uninitialized");
+        require(bytes(name).length > 0, "PeggedTokenDeployer: name required");
+        require(bytes(symbol).length > 0, "PeggedTokenDeployer: symbol required");
 
         address token = address(new BeaconProxy(beacons[nftType], ""));
-        require(_peggedTokens.add(token), "duplicated pegged token created");
+        require(_peggedTokens.add(token), "PeggedTokenDeployer: duplicated pegged token created");
         PeggedNFT(token).initialize(name, symbol, evmOriginToken, owner());
 
         emit ContractCreated(token, nftType, name, symbol);

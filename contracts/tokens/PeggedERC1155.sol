@@ -42,7 +42,7 @@ contract PeggedERC1155 is
         uint256[] memory amounts,
         string[] memory uris
     ) public onlyRole(MINTER_ROLE) {
-        require(ids.length == uris.length, "ids and uris length mismatch");
+        require(ids.length == uris.length, "PeggedERC1155: ids and uris length mismatch");
 
         _mintBatch(to, ids, amounts, "");
 
@@ -56,13 +56,13 @@ contract PeggedERC1155 is
     function uri(
         uint256 tokenId
     ) public view virtual override(ERC1155, ERC1155URIStorage, IERC1155MetadataURI) returns (string memory) {
-        if (evmSide == bytes20(0)) {
+        if (evmSideToken == bytes20(0)) {
             return ERC1155URIStorage.uri(tokenId);
         }
 
         // read token URI from eSpace for pegged token on core space
         bytes memory result = InternalContracts.CROSS_SPACE_CALL.staticCallEVM(
-            evmSide,
+            evmSideToken,
             abi.encodeWithSelector(IERC1155MetadataURI.uri.selector, tokenId)
         );
 

@@ -38,7 +38,7 @@ abstract contract Bridge is IERC721Receiver, ERC1155Holder {
      * @dev Allow users to cross ERC721 tokens in batch.
      */
     function safeBatchTransferFrom(address erc721, uint256[] memory ids, bytes memory data) public {
-        require(PeggedNFTUtil.nftType(erc721) == PeggedNFTUtil.NFT_TYPE_ERC721, "ERC721 token required");
+        require(PeggedNFTUtil.nftType(erc721) == PeggedNFTUtil.NFT_TYPE_ERC721, "Bridge: ERC721 token required");
 
         uint256[] memory amounts = new uint256[](ids.length);
         for (uint256 i = 0; i < ids.length; i++) {
@@ -79,7 +79,7 @@ abstract contract Bridge is IERC721Receiver, ERC1155Holder {
         uint256[] memory values,
         bytes memory data
     ) public virtual override returns (bytes4) {
-        require(ids.length == values.length, "ids and values length mismatch");
+        require(ids.length == values.length, "Bridge: ids and values length mismatch");
 
         address to = _parseToAddress(data);
 
@@ -93,11 +93,11 @@ abstract contract Bridge is IERC721Receiver, ERC1155Holder {
     }
 
     function _parseToAddress(bytes memory data) private pure returns (address to) {
-        require(data.length == 20, "invalid to address");
+        require(data.length == 20, "Bridge: invalid to address");
         assembly {
             to := mload(add(data, 20))
         }
-        require(to != address(0), "to address is zero");
+        require(to != address(0), "Bridge: to address is zero");
     }
 
     function _asSingletonArray(uint256 element) private pure returns (uint256[] memory) {
