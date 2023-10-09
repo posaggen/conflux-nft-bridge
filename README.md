@@ -1,6 +1,18 @@
 # Conflux NFT Bridge
 Allow users to cross NFT between core space and eSpace on Conflux network.
 
+# Install
+
+```bash
+yarn
+```
+
+# Build
+
+```bash
+yarn build
+```
+
 ## Deployment
 Deploy following contracts in sequence:
 
