@@ -4,9 +4,10 @@ pragma solidity ^0.8.0;
 import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
 
+import "@confluxfans/contracts/InternalContracts/InternalContractsHandler.sol";
+
 import "./PeggedTokenDeployer.sol";
 import "./utils/Initializable.sol";
-import "./utils/UpgradeableInternalContractsHandler.sol";
 
 import "./interfaces/IEvmRegistry.sol";
 import "./interfaces/ICoreRegistry.sol";
@@ -16,7 +17,7 @@ import "./interfaces/ICoreRegistry.sol";
  *
  * Generally, this contract will not use sponsorship for NFT admins.
  */
-contract CoreRegistry is ICoreRegistry, Initializable, PeggedTokenDeployer, UpgradeableInternalContractsHandler {
+contract CoreRegistry is ICoreRegistry, Initializable, PeggedTokenDeployer, InternalContractsHandler {
     using EnumerableSet for EnumerableSet.AddressSet;
     using Address for address;
 
@@ -45,16 +46,17 @@ contract CoreRegistry is ICoreRegistry, Initializable, PeggedTokenDeployer, Upgr
     // evm to core crosschain callback handlers
     mapping(address => address) public evm2CoreCallbacks;
 
-    function initialize(bytes20 evmRegistry_) public onlyInitializeOnce {
+    function initialize(bytes20 evmRegistry_, address beacon721, address beacon1155) public onlyInitializeOnce {
         evmRegistry = evmRegistry_;
+
+        // initalize peggedTokenDeployer
+        PeggedTokenDeployer._initialize(beacon721, beacon1155);
 
         // connect to evm side
         InternalContracts.CROSS_SPACE_CALL.callEVM(
             evmRegistry,
             abi.encodeWithSelector(IEvmRegistry.setCfxRegistry.selector)
         );
-
-        _setupInternalContracts();
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////////

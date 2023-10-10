@@ -23,6 +23,7 @@ const userConfig: HttpNetworkUserConfig = {
 
 // tasks
 import "./src/tasks/codesize";
+import "./src/tasks/deploy_core";
 
 const config: HardhatUserConfig = {
     paths: {
@@ -51,10 +52,23 @@ const config: HardhatUserConfig = {
             blockGasLimit: 100000000,
             gas: 100000000,
         },
-        ArbGoerliTestnet: {
+        ConfluxCoreTestnet: {
             ...userConfig,
-            //url: "https://endpoints.omniatech.io/v1/arbitrum/goerli/public",
-            url: "https://goerli-rollup.arbitrum.io/rpc",
+            url: "https://test.confluxrpc.com",
+            chainId: 1,
+        },
+        ConfluxEvmTestnet: {
+            ...userConfig,
+            url: "https://evmtestnet.confluxrpc.com",
+        },
+        ConfluxCore: {
+            ...userConfig,
+            url: "https://main.confluxrpc.com",
+            chainId: 1029,
+        },
+        ConfluxEvm: {
+            ...userConfig,
+            url: "https://evm.confluxrpc.com",
         },
     },
     namedAccounts: {

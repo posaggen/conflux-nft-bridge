@@ -1,10 +1,11 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
+import "@confluxfans/contracts/InternalContracts/InternalContractsHandler.sol";
+
 import "./Bridge.sol";
 import "./utils/Initializable.sol";
 import "./utils/PeggedNFTUtil.sol";
-import "./utils/UpgradeableInternalContractsHandler.sol";
 
 import "./interfaces/ICoreRegistry.sol";
 import "./interfaces/ICoreSide.sol";
@@ -12,7 +13,7 @@ import "./interfaces/IEvmSide.sol";
 import "./interfaces/ICoreToEvmCallback.sol";
 import "./interfaces/IEvmToCoreCallback.sol";
 
-contract CoreSide is ICoreSide, Initializable, Bridge, UpgradeableInternalContractsHandler {
+contract CoreSide is ICoreSide, Initializable, Bridge, InternalContractsHandler {
     // interact via cross space internal contract
     bytes20 public evmSide;
 
@@ -25,8 +26,6 @@ contract CoreSide is ICoreSide, Initializable, Bridge, UpgradeableInternalContra
 
         // connect to evm side
         InternalContracts.CROSS_SPACE_CALL.callEVM(evmSide, abi.encodeWithSelector(IEvmSide.setCfxSide.selector));
-
-        _setupInternalContracts();
     }
 
     // NFT receiver callback handler.

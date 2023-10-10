@@ -14,11 +14,15 @@ yarn build
 ```
 
 ## Deployment
-Deploy following contracts in sequence:
 
-- Deploy `PeggedERC721` with `beacon` on **eSpace**.
-- Deploy `EvmSide` with `beacon & proxy` on **eSpace**, and **initialize** with PeggedERC721 beacon.
-- Deploy `CoreSide` with `beacon & proxy` on **core space**, and **initialize** with `EvmSide` and PeggedERC721 beacon.
+- Deploy EVM space contracts:
+```bash
+yarn deploy <network_name>
+```
+- Deploy core space contracts:
+```bash
+yarn hardhat deploy:core --network <network_name>
+```
 
 ## Deploy Pegged ERC721 Contracts
 Generally, use factory method to deploy pegged NFT contracts. Note, deployer could specify both `name` and `symbol` to override the value in origin NFT contract.

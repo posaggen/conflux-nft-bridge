@@ -1,12 +1,14 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-import "../utils/Initializable.sol";
 import "@openzeppelin/contracts/access/AccessControlEnumerable.sol";
 import "@openzeppelin/contracts/security/Pausable.sol";
-import "../utils/UpgradeableInternalContractsHandler.sol";
 
-abstract contract PeggedNFT is Initializable, AccessControlEnumerable, Pausable, UpgradeableInternalContractsHandler {
+import "@confluxfans/contracts/InternalContracts/InternalContractsHandler.sol";
+
+import "../utils/Initializable.sol";
+
+abstract contract PeggedNFT is Initializable, AccessControlEnumerable, Pausable, InternalContractsHandler {
     bytes32 public constant PAUSER_ROLE = keccak256("PAUSER_ROLE");
     bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
 
@@ -32,8 +34,6 @@ abstract contract PeggedNFT is Initializable, AccessControlEnumerable, Pausable,
         _grantRole(DEFAULT_ADMIN_ROLE, admin);
         _grantRole(PAUSER_ROLE, admin);
         _grantRole(MINTER_ROLE, msg.sender);
-
-        _setupInternalContracts();
     }
 
     function pause() public onlyRole(PAUSER_ROLE) {
