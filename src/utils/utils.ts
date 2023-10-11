@@ -17,6 +17,12 @@ export const CONTRACTS = {
 
     CoreSide: "CoreSide",
     CoreRegistry: "CoreRegistry",
+
+    TestTokenFactory: "TestTokenFactory",
+    TestERC721: "TestERC721",
+    TestERC1155: "TestERC1155",
+    TestCoreToEvmCallback: "TestCoreToEvmCallback",
+    TestEvmToCoreCallback: "TestEvmToCoreCallback",
 };
 
 export async function deployInBeaconProxy(hre: HardhatRuntimeEnvironment, contract: string, withProxy = true) {

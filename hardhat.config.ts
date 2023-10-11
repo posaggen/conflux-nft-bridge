@@ -24,6 +24,7 @@ const userConfig: HttpNetworkUserConfig = {
 // tasks
 import "./src/tasks/codesize";
 import "./src/tasks/deploy_core";
+import "./src/tasks/benchmark";
 
 const config: HardhatUserConfig = {
     paths: {

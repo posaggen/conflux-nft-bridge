@@ -16,6 +16,7 @@ async function deploy(
 ) {
     if (skip && name in contractAddress) {
         console.log(`reusing ${name} contract at ${contractAddress[name]}..`);
+        return;
     }
     const factory = await conflux.getContractFactory(contract);
     console.log(`deploying ${name}..`);
@@ -26,7 +27,7 @@ async function deploy(
         })
         .executed();
     contractAddress[name] = receipt.contractCreated;
-    console.log(`New deployed  ${contract}Impl address: ${receipt.contractCreated}.`);
+    console.log(`New deployed ${name} address: ${receipt.contractCreated}.`);
 }
 
 async function deployInProxy(
@@ -85,27 +86,63 @@ task("deploy:core", "deploy core space contracts")
             CONTRACTS.CoreRegistry,
             contractAddress[CONTRACTS.CoreRegistry]
         );
-        await coreRegistry_
-            .initialize(
-                toBytes(evmContractAddress[CONTRACTS.EvmRegistry]),
-                contractAddress[`${CONTRACTS.PeggedERC721}Beacon`],
-                contractAddress[`${CONTRACTS.PeggedERC1155}Beacon`]
-            )
-            .sendTransaction({
-                from: deployer.address,
-            })
-            .executed();
+        if (!(await coreRegistry_.initialized())) {
+            await coreRegistry_
+                .initialize(
+                    toBytes(evmContractAddress[CONTRACTS.EvmRegistry]),
+                    contractAddress[`${CONTRACTS.PeggedERC721}Beacon`],
+                    contractAddress[`${CONTRACTS.PeggedERC1155}Beacon`]
+                )
+                .sendTransaction({
+                    from: deployer.address,
+                })
+                .executed();
+        }
         // deploy core side
         await deployInProxy(conflux, CONTRACTS.CoreSide, deployer, contractAddress, taskArgs.skip);
         // initialize core side
         console.log(`initializing core side..`);
         const coreSide_ = await conflux.getContractAt(CONTRACTS.CoreSide, contractAddress[CONTRACTS.CoreSide]);
-        await coreSide_
-            .initialize(contractAddress[CONTRACTS.CoreRegistry], toBytes(evmContractAddress[CONTRACTS.EvmSide]))
-            .sendTransaction({
-                from: deployer.address,
-            })
-            .executed();
+        if (!(await coreSide_.initialized())) {
+            await coreSide_
+                .initialize(contractAddress[CONTRACTS.CoreRegistry], toBytes(evmContractAddress[CONTRACTS.EvmSide]))
+                .sendTransaction({
+                    from: deployer.address,
+                })
+                .executed();
+            await coreRegistry_.setBridge(coreSide_.address).sendTransaction({ from: deployer.address }).executed();
+        }
+        // deploy test token factory & callbacks
+        if (hre.network.name == "ConfluxCoreTestnet") {
+            await deploy(
+                conflux,
+                deployer,
+                CONTRACTS.TestTokenFactory,
+                CONTRACTS.TestTokenFactory,
+                [],
+                contractAddress,
+                taskArgs.skip
+            );
+            await deploy(
+                conflux,
+                deployer,
+                CONTRACTS.TestCoreToEvmCallback,
+                CONTRACTS.TestCoreToEvmCallback,
+                [coreSide_.address],
+                contractAddress,
+                taskArgs.skip
+            );
+            await deploy(
+                conflux,
+                deployer,
+                CONTRACTS.TestEvmToCoreCallback,
+                CONTRACTS.TestEvmToCoreCallback,
+                [coreSide_.address],
+                contractAddress,
+                taskArgs.skip
+            );
+        }
+        // write to file
         const outputFile = `${__dirname}/../../deployments/${hre.network.name}.json`;
         fs.writeFileSync(outputFile, JSON.stringify(contractAddress, null, 2));
     });

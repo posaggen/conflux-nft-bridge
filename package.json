@@ -6,6 +6,7 @@
     "build": "hardhat compile",
     "coverage": "hardhat coverage",
     "deploy": "hardhat deploy --network",
+    "benchmark": "hardhat benchmark --network ConfluxEvmTestnet",
     "lint": "yarn lint:sol && yarn lint:ts",
     "lint:sol": "solhint 'contracts/**/*.sol'",
     "lint:ts": "eslint 'src/**/*.ts' 'test/**/*.ts' '*.ts' --max-warnings 0 --fix",
