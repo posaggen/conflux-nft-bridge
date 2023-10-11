@@ -91,7 +91,6 @@ contract EvmRegistry is IEvmRegistry, Initializable, PeggedTokenDeployer {
      * @dev Remove token pair if `evmToken` is empty.
      */
     function unregisterEvm(address evmToken) public onlyCfxRegistry {
-        require(PeggedNFTUtil.totalSupply(evmToken) == 0, "EvmSide: evm token has non-zero supply");
         require(_peggedTokens.remove(evmToken), "EvmSide: already unregistered");
     }
 

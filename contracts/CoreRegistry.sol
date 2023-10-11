@@ -236,7 +236,6 @@ contract CoreRegistry is ICoreRegistry, Initializable, PeggedTokenDeployer, Inte
     function unregisterCfx(address cfxToken) public {
         bytes20 evmToken = peggedCore2EvmTokens[cfxToken];
         require(_isCfxOperatorOrAdmin(evmToken, msg.sender), "CoreRegistry: forbidden");
-        require(PeggedNFTUtil.totalSupply(cfxToken) == 0, "CoreRegistry: cfx token has tokens");
 
         address deployed = evm2CoreTokens[evmToken];
         address registered = registeredEvm2CoreTokens[evmToken];

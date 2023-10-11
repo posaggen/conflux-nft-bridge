@@ -7,7 +7,6 @@ import "@openzeppelin/contracts/access/IAccessControl.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/introspection/IERC165.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
-import "@openzeppelin/contracts/token/ERC721/extensions/IERC721Enumerable.sol";
 import "@openzeppelin/contracts/token/ERC721/extensions/IERC721Metadata.sol";
 import "@openzeppelin/contracts/token/ERC1155/IERC1155.sol";
 import "@openzeppelin/contracts/token/ERC1155/extensions/IERC1155MetadataURI.sol";
@@ -49,14 +48,6 @@ library PeggedNFTUtil {
         } catch {
             return false;
         }
-    }
-
-    function totalSupply(address token) internal view returns (uint256) {
-        if (nftType(token) == NFT_TYPE_ERC721) {
-            return IERC721Enumerable(token).totalSupply();
-        }
-
-        return ICRC1155Enumerable(token).totalSupply();
     }
 
     function batchMint(

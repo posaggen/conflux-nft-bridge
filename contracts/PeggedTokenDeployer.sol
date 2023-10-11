@@ -6,7 +6,6 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/proxy/beacon/BeaconProxy.sol";
 import "@openzeppelin/contracts/proxy/beacon/UpgradeableBeacon.sol";
 import "@openzeppelin/contracts/token/ERC721/extensions/IERC721Metadata.sol";
-import "@openzeppelin/contracts/token/ERC721/extensions/IERC721Enumerable.sol";
 import "@openzeppelin/contracts/utils/introspection/IERC165.sol";
 import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 import "@openzeppelin/contracts/utils/math/Math.sol";
@@ -29,11 +28,18 @@ abstract contract PeggedTokenDeployer is Ownable {
     // all pegged tokens deployed
     EnumerableSet.AddressSet internal _peggedTokens;
 
+    // bridge address
+    address public bridge;
+
     function _initialize(address beacon721, address beacon1155) internal virtual {
         beacons[PeggedNFTUtil.NFT_TYPE_ERC721] = beacon721;
         beacons[PeggedNFTUtil.NFT_TYPE_ERC1155] = beacon1155;
 
         _transferOwnership(msg.sender);
+    }
+
+    function setBridge(address _bridge) external onlyOwner {
+        bridge = _bridge;
     }
 
     function _pagedTokens(
@@ -104,7 +110,7 @@ abstract contract PeggedTokenDeployer is Ownable {
 
         address token = address(new BeaconProxy(beacons[nftType], ""));
         require(_peggedTokens.add(token), "PeggedTokenDeployer: duplicated pegged token created");
-        PeggedNFT(token).initialize(name, symbol, evmOriginToken, owner());
+        PeggedNFT(token).initialize(name, symbol, evmOriginToken, owner(), bridge);
 
         emit ContractCreated(token, nftType, name, symbol);
 

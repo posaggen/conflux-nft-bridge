@@ -24,7 +24,8 @@ abstract contract PeggedNFT is Initializable, AccessControlEnumerable, Pausable,
         string memory name_,
         string memory symbol_,
         bytes20 evmSideToken_,
-        address admin
+        address admin,
+        address minter
     ) public virtual onlyInitializeOnce {
         _name_ = name_;
         _symbol_ = symbol_;
@@ -33,7 +34,7 @@ abstract contract PeggedNFT is Initializable, AccessControlEnumerable, Pausable,
 
         _grantRole(DEFAULT_ADMIN_ROLE, admin);
         _grantRole(PAUSER_ROLE, admin);
-        _grantRole(MINTER_ROLE, msg.sender);
+        _grantRole(MINTER_ROLE, minter);
     }
 
     function pause() public onlyRole(PAUSER_ROLE) {
