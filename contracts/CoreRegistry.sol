@@ -164,7 +164,8 @@ contract CoreRegistry is ICoreRegistry, Initializable, PeggedTokenDeployer, Inte
         }
     }
 
-    function setCore2EvmCallback(address cfxToken, address callback) public onlyPeggable(cfxToken) {
+    function setCore2EvmCallback(address cfxToken, address callback) public {
+        _validateNFTContract(cfxToken);
         require(_isCfxOwnerOrAdmin(cfxToken, msg.sender), "CoreRegistry: forbidden");
         require(callback.isContract(), "CoreRegistry: not contract");
         core2EvmCallbacks[cfxToken] = callback;
@@ -259,11 +260,12 @@ contract CoreRegistry is ICoreRegistry, Initializable, PeggedTokenDeployer, Inte
         require(_peggedTokens.remove(cfxToken), "CoreRegistry: already removed");
     }
 
-    function setEvm2CoreCallback(address cfxToken, address callback) public onlyPeggable(cfxToken) {
+    function setEvm2CoreCallback(address cfxToken, address callback) public {
+        _validateNFTContract(cfxToken);
         bytes20 evmToken = peggedCore2EvmTokens[cfxToken];
         require(_isCfxOperatorOrAdmin(evmToken, msg.sender), "CoreRegistry: forbidden");
         require(callback.isContract(), "CoreRegistry: not contract");
 
-        core2EvmCallbacks[cfxToken] = callback;
+        evm2CoreCallbacks[cfxToken] = callback;
     }
 }

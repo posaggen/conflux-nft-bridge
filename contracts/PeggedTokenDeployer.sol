@@ -67,12 +67,8 @@ abstract contract PeggedTokenDeployer is Ownable {
         return _pagedTokens(_peggedTokens, offset, limit);
     }
 
-    modifier onlyPeggable(address originToken) {
+    function _validateNFTContract(address originToken) internal view {
         require(originToken.isContract(), "PeggedTokenDeployer: token is not contract");
-
-        // avoid cycle pegged
-        require(!_peggedTokens.contains(originToken), "PeggedTokenDeployer: cycle pegged");
-
         // requires necessary metadata and enumerable interfaces
         if (IERC165(originToken).supportsInterface(type(IERC721).interfaceId)) {
             require(
@@ -90,6 +86,13 @@ abstract contract PeggedTokenDeployer is Ownable {
                 "PeggedTokenDeployer: ICRC1155Metadata required"
             );
         }
+    }
+
+    modifier onlyPeggable(address originToken) {
+        _validateNFTContract(originToken);
+
+        // avoid cycle pegged
+        require(!_peggedTokens.contains(originToken), "PeggedTokenDeployer: cycle pegged");
 
         _;
     }
