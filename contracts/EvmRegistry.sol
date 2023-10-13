@@ -48,6 +48,13 @@ contract EvmRegistry is IEvmRegistry, Initializable, PeggedTokenDeployer {
         require(_peggedTokens.contains(nft) || _originTokens.contains(nft), "EvmRegistry: invalid token received");
     }
 
+    /**
+     * @dev Get origin tokens on eSpace in paging view.
+     */
+    function evmTokens(uint256 offset, uint256 limit) public view returns (uint256 total, address[] memory tokens) {
+        return _pagedTokens(_originTokens, offset, limit);
+    }
+
     ////////////////////////////////////////////////////////////////////////////////////////////////////
     //
     // Origin tokens on core space, and pegged tokens on eSpace.

@@ -112,6 +112,10 @@ contract CoreSide is ICoreSide, Initializable, Bridge, InternalContractsHandler 
 
     /**
      * @dev Withdraw locked NFT from eSpace to core space.
+     * @param evmToken eSpace token address
+     * @param ids token ids
+     * @param amounts token amounts
+     * @param recipient core space recipient address
      */
     function withdrawFromEvm(
         bytes20 evmToken,
@@ -143,6 +147,10 @@ contract CoreSide is ICoreSide, Initializable, Bridge, InternalContractsHandler 
 
     /**
      * @dev Cross locked NFT from eSpace to core space as pegged.
+     * @param cfxToken core space token address
+     * @param ids token ids
+     * @param amounts token amounts
+     * @param recipient recipient address
      */
     function crossFromEvm(address cfxToken, uint256[] memory ids, uint256[] memory amounts, address recipient) public {
         require(ids.length == amounts.length, "CoreSide: ids and amounts length mismatch");

@@ -78,6 +78,7 @@ contract CoreRegistry is ICoreRegistry, Initializable, PeggedTokenDeployer, Inte
 
     /**
      * @dev Register deployment of NFT contract on eSpace for specified `cfxToken` with original `name` and `symbol`.
+     * @param cfxToken core space token address
      */
     function registerDeployEvm(address cfxToken) public onlyPeggable(cfxToken) {
         require(core2EvmTokens[cfxToken] == bytes20(0), "CoreRegistry: deployed already");
@@ -96,6 +97,7 @@ contract CoreRegistry is ICoreRegistry, Initializable, PeggedTokenDeployer, Inte
 
     /**
      * @dev retrieve deployed pegged token address from eSpace
+     * @param cfxToken core space token address
      */
     function updateDeployed(address cfxToken) public {
         require(core2EvmTokens[cfxToken] == bytes20(0), "CoreRegistry: deployed already");

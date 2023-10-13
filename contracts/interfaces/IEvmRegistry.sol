@@ -25,6 +25,8 @@ interface IEvmRegistry {
         address
     ) external view returns (string memory name, string memory symbol, uint256 nftType, address deployed);
 
+    function evmTokens(uint256 offset, uint256 limit) external view returns (uint256 total, address[] memory tokens);
+
     function getDeployed(address nft) external view returns (address deployed);
 
     function preDeployCfx(
