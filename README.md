@@ -13,7 +13,7 @@ yarn
 yarn build
 ```
 
-## Deployment
+# Deployment
 
 - Deploy EVM space contracts:
 ```bash
@@ -24,8 +24,8 @@ yarn deploy <network_name>
 yarn hardhat deploy:core --network <network_name>
 ```
 
-## Deploy Pegged ERC721 Contracts
-Generally, use factory method to deploy pegged NFT contracts. Note, deployer could specify both `name` and `symbol` to override the value in origin NFT contract.
+# Developer Docs
 
-- Pegged on eSpace: `CoreSide.deployEvm(address cfxToken, string memory name, string memory symbol)`.
-- Pegged on core space: `CoreSide.deployCfx(bytes20 evmToken, string memory name, string memory symbol)`.
+- [Transfer NFT between conflux core space and eSpace](docs/cross_space.md)
+
+- [Cross Space Token Mappings](docs/token_mapping.md)
